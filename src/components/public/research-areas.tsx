@@ -264,7 +264,7 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                     key={domain.id}
                     onClick={() => setActiveCard(domain)}
                     onMouseEnter={() => setActiveCard(domain)}
-                    className={`rounded-3xl border relative overflow-hidden flex flex-col justify-between cursor-pointer will-change-[flex,max-width,transform,box-shadow] [transition:all_700ms_cubic-bezier(0.16,1,0.3,1)] ${
+                    className={`rounded-3xl border relative overflow-hidden flex flex-col justify-between cursor-pointer will-change-[flex,max-width,transform,box-shadow] [transition:all_1100ms_cubic-bezier(0.25,1,0.3,1)] ${
                       isExpanded
                         ? "flex-1 lg:flex-[3.8] bg-white dark:bg-[#0F172A] border-emerald-500/80 dark:border-emerald-500/70 shadow-2xl shadow-emerald-950/20 dark:shadow-emerald-950/40 p-6 sm:p-8"
                         : "flex-none h-20 lg:h-auto lg:flex-[0.65] lg:max-w-[105px] bg-slate-50 dark:bg-[#0B1120] border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 hover:bg-slate-100/80 dark:hover:bg-[#0F172A]/80 p-4 lg:py-8 lg:px-4"
@@ -272,7 +272,7 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                   >
                     {/* Collapsed State View (Smoothly cross-fades out when expanding) */}
                     <div
-                      className={`absolute inset-0 p-4 lg:py-8 lg:px-4 flex lg:flex-col items-center justify-between w-full h-full [transition:all_500ms_cubic-bezier(0.16,1,0.3,1)] ${
+                      className={`absolute inset-0 p-4 lg:py-8 lg:px-4 flex lg:flex-col items-center justify-between w-full h-full [transition:all_800ms_cubic-bezier(0.25,1,0.3,1)] ${
                         isExpanded
                           ? "opacity-0 pointer-events-none scale-90 -translate-y-2 lg:translate-y-0 lg:-translate-x-2"
                           : "opacity-100 pointer-events-auto scale-100 translate-y-0 translate-x-0"
@@ -297,12 +297,12 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                       </span>
                     </div>
 
-                    {/* Expanded Active View (Smoothly cross-fades in with iOS spring feel) */}
+                    {/* Expanded Active View (Smoothly cross-fades in with velvety slow slide) */}
                     <div
-                      className={`w-full h-full flex flex-col justify-between space-y-6 [transition:opacity_600ms_cubic-bezier(0.16,1,0.3,1)_100ms,transform_600ms_cubic-bezier(0.16,1,0.3,1)_100ms] ${
+                      className={`w-full h-full flex flex-col justify-between space-y-6 [transition:opacity_900ms_cubic-bezier(0.25,1,0.3,1)_200ms,transform_1000ms_cubic-bezier(0.25,1,0.3,1)_150ms] ${
                         isExpanded
                           ? "opacity-100 scale-100 pointer-events-auto translate-y-0 relative z-10"
-                          : "opacity-0 scale-[0.98] pointer-events-none translate-y-2 absolute inset-0 p-6 sm:p-8 overflow-hidden"
+                          : "opacity-0 scale-[0.98] pointer-events-none translate-y-3 absolute inset-0 p-6 sm:p-8 overflow-hidden"
                       }`}
                     >
                       {/* Top Banner */}
@@ -333,7 +333,7 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                           <img
                             src={domain.imageSrc}
                             alt={domain.imageAlt}
-                            className="w-full h-full object-cover object-center filter brightness-[0.98] group-hover/img:scale-105 [transition:transform_900ms_cubic-bezier(0.16,1,0.3,1)]"
+                            className="w-full h-full object-cover object-center filter brightness-[0.98] group-hover/img:scale-105 [transition:transform_1400ms_cubic-bezier(0.25,1,0.3,1)]"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
 
