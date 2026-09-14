@@ -254,7 +254,7 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
             </div>
 
             {/* Expanding Horizontal Monolith Deck */}
-            <div className="flex flex-col lg:flex-row items-stretch gap-4 min-h-[580px] lg:min-h-[620px]">
+            <div className="flex flex-col lg:flex-row items-stretch gap-3 sm:gap-4 min-h-[580px] lg:min-h-[620px]">
               {STUDY_DOMAINS.map((domain) => {
                 const Icon = domain.icon;
                 const isExpanded = activeCard.id === domain.id;
@@ -264,157 +264,165 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                     key={domain.id}
                     onClick={() => setActiveCard(domain)}
                     onMouseEnter={() => setActiveCard(domain)}
-                    className={`rounded-3xl border transition-all duration-500 ease-out relative overflow-hidden flex flex-col justify-between cursor-pointer ${
+                    className={`rounded-3xl border relative overflow-hidden flex flex-col justify-between cursor-pointer will-change-[flex,max-width,transform,box-shadow] [transition:all_700ms_cubic-bezier(0.16,1,0.3,1)] ${
                       isExpanded
                         ? "flex-1 lg:flex-[3.8] bg-white dark:bg-[#0F172A] border-emerald-500/80 dark:border-emerald-500/70 shadow-2xl shadow-emerald-950/20 dark:shadow-emerald-950/40 p-6 sm:p-8"
-                        : "flex-none h-20 lg:h-auto lg:flex-[0.65] lg:max-w-[105px] bg-slate-50 dark:bg-[#0B1120] border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 hover:lg:flex-[0.95] p-4 lg:py-8 lg:px-4"
+                        : "flex-none h-20 lg:h-auto lg:flex-[0.65] lg:max-w-[105px] bg-slate-50 dark:bg-[#0B1120] border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 hover:bg-slate-100/80 dark:hover:bg-[#0F172A]/80 p-4 lg:py-8 lg:px-4"
                     }`}
                   >
-                    {/* Collapsed State View */}
-                    {!isExpanded && (
-                      <div className="h-full flex lg:flex-col items-center justify-between w-full">
-                        <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
-                          <Icon className="w-5 h-5" />
-                        </div>
+                    {/* Collapsed State View (Smoothly cross-fades out when expanding) */}
+                    <div
+                      className={`absolute inset-0 p-4 lg:py-8 lg:px-4 flex lg:flex-col items-center justify-between w-full h-full [transition:all_500ms_cubic-bezier(0.16,1,0.3,1)] ${
+                        isExpanded
+                          ? "opacity-0 pointer-events-none scale-90 -translate-y-2 lg:translate-y-0 lg:-translate-x-2"
+                          : "opacity-100 pointer-events-auto scale-100 translate-y-0 translate-x-0"
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+                        <Icon className="w-5 h-5" />
+                      </div>
 
-                        <div className="hidden lg:flex items-center justify-center flex-1 my-4">
-                          <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
-                            {domain.index} • {domain.shortTitle}
-                          </span>
-                        </div>
-
-                        <span className="lg:hidden text-xs font-bold text-slate-700 dark:text-slate-300">
-                          {domain.index} · {domain.title}
-                        </span>
-
-                        <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
-                          {domain.index}
+                      <div className="hidden lg:flex items-center justify-center flex-1 my-4">
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
+                          {domain.index} • {domain.shortTitle}
                         </span>
                       </div>
-                    )}
 
-                    {/* Expanded Active View */}
-                    {isExpanded && (
-                      <div className="h-full flex flex-col justify-between space-y-6 animate-in fade-in duration-300">
-                        {/* Top Banner */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
-                              <Icon className="w-6 h-6" />
-                            </div>
-                            <div>
-                              <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                                PILLAR {domain.index}
-                              </div>
-                              <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)] tracking-tight">
-                                {domain.title}
-                              </h3>
-                            </div>
+                      <span className="lg:hidden text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {domain.index} · {domain.title}
+                      </span>
+
+                      <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                        {domain.index}
+                      </span>
+                    </div>
+
+                    {/* Expanded Active View (Smoothly cross-fades in with iOS spring feel) */}
+                    <div
+                      className={`w-full h-full flex flex-col justify-between space-y-6 [transition:opacity_600ms_cubic-bezier(0.16,1,0.3,1)_100ms,transform_600ms_cubic-bezier(0.16,1,0.3,1)_100ms] ${
+                        isExpanded
+                          ? "opacity-100 scale-100 pointer-events-auto translate-y-0 relative z-10"
+                          : "opacity-0 scale-[0.98] pointer-events-none translate-y-2 absolute inset-0 p-6 sm:p-8 overflow-hidden"
+                      }`}
+                    >
+                      {/* Top Banner */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+                            <Icon className="w-6 h-6" />
                           </div>
-
-                          <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-500/20 w-fit">
-                            {domain.keyHighlight}
-                          </span>
+                          <div>
+                            <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                              PILLAR {domain.index}
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)] tracking-tight">
+                              {domain.title}
+                            </h3>
+                          </div>
                         </div>
 
-                        {/* Mid Grid: Viewport Image + Live Telemetry Waveform */}
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                          {/* Image Viewport */}
-                          <div className="md:col-span-6 relative aspect-[16/10] rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md group/img">
-                            <img
-                              src={domain.imageSrc}
-                              alt={domain.imageAlt}
-                              className="w-full h-full object-cover object-center filter brightness-[0.98] group-hover/img:scale-105 transition-transform duration-700"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
+                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-500/20 w-fit">
+                          {domain.keyHighlight}
+                        </span>
+                      </div>
 
-                            <div className="absolute top-3 left-3 z-10">
-                              <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-white text-[10px] font-bold border border-emerald-500/40 flex items-center gap-1.5 shadow">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                                <span>LIVE VIEWPORT</span>
-                              </span>
-                            </div>
+                      {/* Mid Grid: Viewport Image + Live Telemetry Waveform */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                        {/* Image Viewport */}
+                        <div className="md:col-span-6 relative aspect-[16/10] rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md group/img">
+                          <img
+                            src={domain.imageSrc}
+                            alt={domain.imageAlt}
+                            className="w-full h-full object-cover object-center filter brightness-[0.98] group-hover/img:scale-105 [transition:transform_900ms_cubic-bezier(0.16,1,0.3,1)]"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
 
-                            <div className="absolute bottom-3 left-3 right-3 text-white z-10">
-                              <div className="text-[11px] font-semibold text-emerald-300">
-                                Detection Benchmark:
-                              </div>
-                              <div className="text-xs font-black">
-                                {domain.detectionMetric}
-                              </div>
-                            </div>
+                          <div className="absolute top-3 left-3 z-10">
+                            <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-white text-[10px] font-bold border border-emerald-500/40 flex items-center gap-1.5 shadow">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                              <span>LIVE VIEWPORT</span>
+                            </span>
                           </div>
 
-                          {/* Technical Telemetry & Specifications */}
-                          <div className="md:col-span-6 space-y-4 text-left">
-                            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                              {domain.description}
-                            </p>
-
-                            {/* Simulated Live Spectral Waveform HUD */}
-                            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 space-y-1.5">
-                              <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                                  <Waves className="w-3.5 h-3.5" />
-                                  <span>Live Telemetry Spectrum</span>
-                                </span>
-                                <span>100Hz • CALIBRATED</span>
-                              </div>
-
-                              {/* Stylized Sine/Peak Waveform */}
-                              <svg
-                                viewBox="0 0 400 45"
-                                className="w-full h-9 text-emerald-500 dark:text-emerald-400 overflow-visible"
-                              >
-                                <path
-                                  d="M0,22 Q25,22 40,8 T80,36 T120,4 T160,30 T200,22 T240,10 T280,38 T320,14 T360,28 T400,22"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.2"
-                                  strokeLinecap="round"
-                                />
-                                <circle cx="120" cy="4" r="3.5" fill="#10B981" className="animate-ping" />
-                              </svg>
+                          <div className="absolute bottom-3 left-3 right-3 text-white z-10">
+                            <div className="text-[11px] font-semibold text-emerald-300">
+                              Detection Benchmark:
                             </div>
-
-                            {/* Technical Specs Tags */}
-                            <div className="space-y-1.5 text-xs">
-                              <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                Primary Instrumentation &amp; Matrices
-                              </div>
-                              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                                {domain.instrumentation}
-                              </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Matrices: {domain.targetMatrices}
-                              </div>
+                            <div className="text-xs font-black">
+                              {domain.detectionMetric}
                             </div>
                           </div>
                         </div>
 
-                        {/* Bottom Actions Row */}
-                        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex flex-wrap gap-1.5">
-                            {domain.tags.map((tag, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#0B1120] text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-800"
-                              >
-                                {tag}
+                        {/* Technical Telemetry & Specifications */}
+                        <div className="md:col-span-6 space-y-4 text-left">
+                          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                            {domain.description}
+                          </p>
+
+                          {/* Simulated Live Spectral Waveform HUD */}
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 space-y-1.5">
+                            <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                <Waves className="w-3.5 h-3.5" />
+                                <span>Live Telemetry Spectrum</span>
                               </span>
-                            ))}
+                              <span>100Hz • CALIBRATED</span>
+                            </div>
+
+                            {/* Stylized Sine/Peak Waveform */}
+                            <svg
+                              viewBox="0 0 400 45"
+                              className="w-full h-9 text-emerald-500 dark:text-emerald-400 overflow-visible"
+                            >
+                              <path
+                                d="M0,22 Q25,22 40,8 T80,36 T120,4 T160,30 T200,22 T240,10 T280,38 T320,14 T360,28 T400,22"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.2"
+                                strokeLinecap="round"
+                              />
+                              <circle cx="120" cy="4" r="3.5" fill="#10B981" className="animate-ping" />
+                            </svg>
                           </div>
 
-                          <Link
-                            href={`/research#${domain.slug}`}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition shadow-md shadow-emerald-950/20 active:scale-95 ml-auto"
-                          >
-                            <span>Explore Full Pillar Research</span>
-                            <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-                          </Link>
+                          {/* Technical Specs Tags */}
+                          <div className="space-y-1.5 text-xs">
+                            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                              Primary Instrumentation &amp; Matrices
+                            </div>
+                            <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              {domain.instrumentation}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                              Matrices: {domain.targetMatrices}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    )}
+
+                      {/* Bottom Actions Row */}
+                      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {domain.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#0B1120] text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-800"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        <Link
+                          href={`/research#${domain.slug}`}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition shadow-md shadow-emerald-950/20 active:scale-95 ml-auto"
+                        >
+                          <span>Explore Full Pillar Research</span>
+                          <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </Link>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
