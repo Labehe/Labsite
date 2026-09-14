@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/public/navbar";
 import { Footer } from "@/components/public/footer";
 import { getProjectBySlug, getRelatedProjects } from "@/lib/projects/queries";
+import { ProjectGallery } from "@/components/public/projects/project-gallery";
 import {
   ArrowLeft,
   Calendar,
@@ -267,6 +268,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                     </div>
                   </div>
                 )}
+
+                {/* Project Fieldwork & Laboratory Visual Gallery (Max 4 Images) */}
+                <ProjectGallery images={project.gallery} projectTitle={project.title} />
               </div>
 
               {/* Right 4-Columns: Luxury Sidebar with Researchers & Metadata */}

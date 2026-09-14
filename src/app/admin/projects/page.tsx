@@ -37,7 +37,8 @@ import {
   Image as ImageIcon,
   Share2,
   SlidersHorizontal,
-  ExternalLink
+  ExternalLink,
+  Camera
 } from "lucide-react";
 import { ProjectWithRelations, ProjectStatus, ProjectFormData } from "@/lib/projects/types";
 import { getPublishedProjects, getResearchAreas } from "@/lib/projects/queries";
@@ -71,6 +72,7 @@ export default function AdminProjectsPage() {
   const [editorSection, setEditorSection] = useState<"all" | "basic" | "science" | "people" | "areas" | "grant" | "media" | "visibility">("all");
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingGalleryIndex, setUploadingGalleryIndex] = useState<number | null>(null);
   const [statusNotification, setStatusNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   // Delete modal state
@@ -240,6 +242,25 @@ export default function AdminProjectsPage() {
       setStatusNotification({ type: "error", message: "Failed to upload image." });
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  // Gallery Image Upload handler (up to 4 images)
+  const handleGalleryImageUpload = async (file: File, index: number) => {
+    setUploadingGalleryIndex(index);
+    try {
+      const publicUrl = await uploadProjectMedia(file);
+      const currentGallery = [...(formData.gallery || [])];
+      currentGallery[index] = publicUrl;
+      setFormData((prev) => ({
+        ...prev,
+        gallery: currentGallery,
+      }));
+      setStatusNotification({ type: "success", message: `Gallery photo 0${index + 1} uploaded to storage!` });
+    } catch {
+      setStatusNotification({ type: "error", message: `Failed to upload gallery photo 0${index + 1}.` });
+    } finally {
+      setUploadingGalleryIndex(null);
     }
   };
 
@@ -1098,78 +1119,193 @@ export default function AdminProjectsPage() {
                 </div>
               )}
 
-              {/* 7. HERO BANNER & MEDIA */}
+              {/* 7. HERO BANNER & PROJECT GALLERY (MAX 4 IMAGES) */}
               {(editorSection === "all" || editorSection === "media") && (
-                <div className={`p-6 rounded-3xl border space-y-4 ${cardBg}`}>
-                  <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    <ImageIcon className="w-4 h-4 text-emerald-500" />
-                    <h3 className={`text-sm font-bold ${headingText}`}>
-                      Hero Banner &amp; Image
-                    </h3>
-                  </div>
+                <div className={`p-6 rounded-3xl border space-y-6 ${cardBg}`}>
+                  {/* Hero Image Subsection */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                      <ImageIcon className="w-4 h-4 text-emerald-500" />
+                      <h3 className={`text-sm font-bold ${headingText}`}>
+                        Primary Hero Banner Image
+                      </h3>
+                    </div>
 
-                  {/* Preview Canvas */}
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-800 shadow-inner">
-                    {formData.hero_image ? (
-                      <Image
-                        src={formData.hero_image}
-                        alt="Hero Preview"
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 400px"
+                    {/* Preview Canvas */}
+                    <div className="w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-800 shadow-inner">
+                      {formData.hero_image ? (
+                        <Image
+                          src={formData.hero_image}
+                          alt="Hero Preview"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 400px"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
+                          <Upload className="w-8 h-8 opacity-50" />
+                          <span className="text-xs font-mono">No Hero Configured</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Supabase Storage Upload */}
+                    <div>
+                      <label className={`block text-[11px] font-mono ${subText} mb-1.5`}>
+                        Upload Hero Image to Supabase (bucket: project-media)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFile}
+                        disabled={uploadingImage}
+                        className={`w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
                       />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-                        <Upload className="w-8 h-8 opacity-50" />
-                        <span className="text-xs font-mono">No Image Configured</span>
+                      {uploadingImage && (
+                        <div className="flex items-center gap-2 text-xs text-emerald-600 mt-2 font-medium">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading hero to storage...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Direct URL */}
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                        Or Direct Image URL
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.hero_image}
+                        onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
+                        placeholder="https://images.unsplash.com/..."
+                        className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                        Image Alt Description (SEO)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.image_alt}
+                        onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
+                        placeholder="Descriptive accessibility label..."
+                        className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Project Gallery Subsection (Up to 4 Images) */}
+                  <div className="space-y-4 pt-5 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-emerald-500" />
+                        <h3 className={`text-sm font-bold ${headingText}`}>
+                          Project Gallery (Max 4 Photos)
+                        </h3>
                       </div>
-                    )}
-                  </div>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {(formData.gallery || []).length} / 4 Slots
+                      </span>
+                    </div>
+                    <p className={`text-[11px] ${subText}`}>
+                      Upload or paste up to 4 project-related field sampling, laboratory, and scientific artifact photos.
+                    </p>
 
-                  {/* Supabase Storage Upload */}
-                  <div>
-                    <label className={`block text-[11px] font-mono ${subText} mb-1.5`}>
-                      Upload to Supabase Storage (bucket: project-media)
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageFile}
-                      disabled={uploadingImage}
-                      className={`w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
-                    />
-                    {uploadingImage && (
-                      <div className="flex items-center gap-2 text-xs text-emerald-600 mt-2 font-medium">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading image to storage...
-                      </div>
-                    )}
-                  </div>
+                    {/* Gallery Cards */}
+                    <div className="space-y-3.5">
+                      {(formData.gallery || []).slice(0, 4).map((url, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#090D16] space-y-2.5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                              <span>Photo 0{idx + 1}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = (formData.gallery || []).filter((_, i) => i !== idx);
+                                setFormData({ ...formData, gallery: updated });
+                              }}
+                              className="text-red-500 hover:text-red-600 p-1 hover:bg-red-500/10 rounded-lg transition text-xs font-bold flex items-center gap-1 cursor-pointer"
+                              title="Delete this photo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Remove
+                            </button>
+                          </div>
 
-                  {/* Direct URL */}
-                  <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                      Or Direct Image URL
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.hero_image}
-                      onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
-                      placeholder="https://images.unsplash.com/..."
-                      className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
-                    />
-                  </div>
+                          {/* Image preview thumbnail */}
+                          {url ? (
+                            <div className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-700">
+                              <Image
+                                src={url}
+                                alt={`Gallery image 0${idx + 1}`}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs">
+                              <ImageIcon className="w-5 h-5 opacity-40 mb-1" />
+                              <span>Empty image slot</span>
+                            </div>
+                          )}
 
-                  <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                      Image Alt Description (SEO)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.image_alt}
-                      onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
-                      placeholder="Descriptive accessibility label..."
-                      className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
-                    />
+                          {/* Upload to Supabase */}
+                          <div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingGalleryIndex === idx}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleGalleryImageUpload(file, idx);
+                              }}
+                              className={`w-full text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
+                            />
+                            {uploadingGalleryIndex === idx && (
+                              <div className="flex items-center gap-1.5 text-xs text-emerald-600 mt-1 font-medium">
+                                <Loader2 className="w-3 h-3 animate-spin" /> Uploading photo 0{idx + 1}...
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Direct URL input */}
+                          <input
+                            type="url"
+                            value={url}
+                            onChange={(e) => {
+                              const updated = [...(formData.gallery || [])];
+                              updated[idx] = e.target.value;
+                              setFormData({ ...formData, gallery: updated });
+                            }}
+                            placeholder="Or paste image URL (https://...)"
+                            className={`w-full px-3 py-1.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                          />
+                        </div>
+                      ))}
+
+                      {/* Add Slot Button (Max 4) */}
+                      {(!formData.gallery || formData.gallery.length < 4) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = formData.gallery || [];
+                            if (current.length < 4) {
+                              setFormData({ ...formData, gallery: [...current, ""] });
+                            }
+                          }}
+                          className="w-full py-2.5 rounded-2xl border border-dashed border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                          <span>Add Gallery Photo Slot ({(formData.gallery || []).length}/4)</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
