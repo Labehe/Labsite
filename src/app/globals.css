@@ -1,26 +1,408 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Manrope:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+/* Explicit Local Font-Face Fallbacks for Manrope */
+@font-face {
+  font-family: 'Manrope';
+  src: url('/manrope/manrope-thin.otf') format('opentype');
+  font-weight: 100 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/manrope/manrope-light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/manrope/manrope-regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/manrope/manrope-medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/manrope/manrope-semibold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/manrope/manrope-bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/manrope/manrope-extrabold.otf') format('opentype');
+  font-weight: 800 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: var(--font-manrope), "Manrope", var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Environmental Science & Health Palette */
+  --color-forest-deep: #052E16;
+  --color-forest-main: #14532D;
+  --color-forest-light: #166534;
+  --color-emerald-vibrant: #10B981;
+  --color-emerald-accent: #059669;
+  --color-teal-scientific: #0F766E;
+  --color-mint-soft: #E8F5EE;
+
+  /* Day Mode Surfaces */
+  --color-day-bg: #FFFFFF;
+  --color-day-soft: #F4F8F5;
+  --color-day-card: #FFFFFF;
+  --color-day-border: #D8E6DC;
+  --color-day-text: #0F172A;
+  --color-day-text-muted: #475569;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-page: #FFFFFF;
+  --text-main: #0F172A;
+  --text-sub: #1E293B;
+  --text-muted: #475569;
+  --card-bg: #FFFFFF;
+  --card-border: #E2E8F0;
+  --card-hover-border: #14532D;
+  --nav-bg: rgba(255, 255, 255, 0.94);
+  --nav-border: #E2E8F0;
+  --stat-emerald: #14532D;
+  --stat-teal: #0F766E;
+  --stat-citron: #4D7C0F;
+  --grid-line: rgba(20, 83, 45, 0.05);
+  --grid-glow: rgba(16, 185, 129, 0.06);
+  --button-outline-bg: #FFFFFF;
+  --button-outline-border: #E2E8F0;
+  --button-outline-text: #0F172A;
+  --pill-bg: #ECFDF5;
+  --pill-border: rgba(16, 185, 129, 0.3);
+  --pill-text: #065F46;
+  --card-inner-bg: #F8FAFC;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[data-theme="dark"],
+.dark {
+  --bg-page: #090D16;
+  --text-main: #FFFFFF;
+  --text-sub: #F1F5F9;
+  --text-muted: #94A3B8;
+  --card-bg: #0F172A;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-hover-border: #10B981;
+  --nav-bg: rgba(9, 13, 22, 0.92);
+  --nav-border: rgba(255, 255, 255, 0.08);
+  --stat-emerald: #10B981;
+  --stat-teal: #14B8A6;
+  --stat-citron: #A3E635;
+  --grid-line: rgba(255, 255, 255, 0.03);
+  --grid-glow: rgba(16, 185, 129, 0.08);
+  --button-outline-bg: rgba(15, 23, 42, 0.85);
+  --button-outline-border: rgba(255, 255, 255, 0.12);
+  --button-outline-text: #FFFFFF;
+  --pill-bg: rgba(16, 185, 129, 0.12);
+  --pill-border: rgba(16, 185, 129, 0.3);
+  --pill-text: #34D399;
+  --card-inner-bg: #0B1120;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+/* Clean, Modern, Elegant Typography (Matching Reference Aesthetic) */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+p {
+  line-height: 1.65;
+}
+
+.font-display-huge {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.font-display-hero {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+/* Clean, Highly-Readable Typography Classes */
+.font-mono-scientific {
+  font-family: var(--font-sans);
+  letter-spacing: 0.02em;
+}
+
+.font-code-snippet {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Environmental Science Hero Gradient */
+.hero-gradient-banner {
+  background: linear-gradient(135deg, #059669 0%, #14532D 55%, #052E16 100%);
+}
+
+.hero-gradient-overlay {
+  background: radial-gradient(circle at 80% 20%, rgba(52, 211, 153, 0.15) 0%, transparent 50%);
+}
+
+/* Theme Adaptive Styles */
+.theme-nav {
+  background-color: var(--nav-bg);
+  border-color: var(--nav-border);
+}
+
+.theme-card {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+  color: var(--text-main);
+}
+
+.theme-card:hover {
+  border-color: var(--card-hover-border);
+}
+
+.theme-card-inner {
+  background-color: var(--card-inner-bg);
+  border-color: var(--card-border);
+}
+
+.theme-pill {
+  background-color: var(--pill-bg);
+  border-color: var(--pill-border);
+  color: var(--pill-text);
+}
+
+.theme-text-main {
+  color: var(--text-main);
+}
+
+.theme-text-sub {
+  color: var(--text-sub);
+}
+
+.theme-text-muted {
+  color: var(--text-muted);
+}
+
+/* Section Kicker Pill & Line in Environmental Forest */
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #14532D;
+}
+
+.section-kicker::before {
+  content: "";
+  display: inline-block;
+  width: 1.5rem;
+  height: 2px;
+  background-color: #14532D;
+  border-radius: 9999px;
+}
+
+/* Continuous Marquee Animation */
+@keyframes marquee-left {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-scroll {
+  display: flex;
+  width: max-content;
+  animation: marquee-left 35s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* ==============================================================================
+   Admin Themes: Modern Eye-Pleasing SaaS Palette (Dark & Daylight)
+   ============================================================================== */
+
+/* Daylight / Light Mode */
+.admin-light-theme,
+.admin-light-mode {
+  background-color: #F8FAFC !important;
+  color: #1E293B !important;
+  color-scheme: light;
+}
+
+.admin-light-theme header,
+.admin-light-mode header {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.admin-light-theme aside,
+.admin-light-mode aside {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+.admin-light-theme main,
+.admin-light-mode main {
+  background-color: #F8FAFC !important;
+  color: #1E293B !important;
+}
+
+.admin-light-theme h1,
+.admin-light-theme h2,
+.admin-light-theme h3,
+.admin-light-theme h4,
+.admin-light-mode h1,
+.admin-light-mode h2,
+.admin-light-mode h3,
+.admin-light-mode h4 {
+  color: #0F172A !important;
+}
+
+.admin-light-theme p,
+.admin-light-mode p {
+  color: #475569 !important;
+}
+
+.admin-light-theme input,
+.admin-light-theme textarea,
+.admin-light-theme select,
+.admin-light-mode input,
+.admin-light-mode textarea,
+.admin-light-mode select {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+.admin-light-theme input:focus,
+.admin-light-theme textarea:focus,
+.admin-light-theme select:focus,
+.admin-light-mode input:focus,
+.admin-light-mode textarea:focus,
+.admin-light-mode select:focus {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Dark Mode: Eye-Pleasing Obsidian Slate */
+.admin-dark-theme,
+.admin-dark-mode {
+  background-color: #090D16 !important;
+  color: #E2E8F0 !important;
+  color-scheme: dark;
+}
+
+.admin-dark-theme header,
+.admin-dark-mode header {
+  background-color: #0B1120 !important;
+  border-color: #1E293B !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.admin-dark-theme aside,
+.admin-dark-mode aside {
+  background-color: #0B1120 !important;
+  border-color: #1E293B !important;
+}
+
+.admin-dark-theme main,
+.admin-dark-mode main {
+  background-color: #090D16 !important;
+  color: #E2E8F0 !important;
+}
+
+.admin-dark-theme h1,
+.admin-dark-theme h2,
+.admin-dark-theme h3,
+.admin-dark-theme h4,
+.admin-dark-mode h1,
+.admin-dark-mode h2,
+.admin-dark-mode h3,
+.admin-dark-mode h4 {
+  color: #F8FAFC !important;
+}
+
+.admin-dark-theme p,
+.admin-dark-mode p {
+  color: #94A3B8 !important;
+}
+
+.admin-dark-theme input,
+.admin-dark-theme textarea,
+.admin-dark-theme select,
+.admin-dark-mode input,
+.admin-dark-mode textarea,
+.admin-dark-mode select {
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+
+.admin-dark-theme input:focus,
+.admin-dark-theme textarea:focus,
+.admin-dark-theme select:focus,
+.admin-dark-mode input:focus,
+.admin-dark-mode textarea:focus,
+.admin-dark-mode select:focus {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
 }

@@ -1,69 +1,75 @@
-import Image from "next/image";
+import * as React from "react";
+import { Navbar } from "@/components/public/navbar";
+import { Hero } from "@/components/public/hero";
+import { ResearchStats } from "@/components/public/research-stats";
+import { ResearchAreas } from "@/components/public/research-areas";
+import { FeaturedProject } from "@/components/public/featured-project";
+import { PartnersMarquee } from "@/components/public/partners-marquee";
+import { FeaturedPublications } from "@/components/public/featured-publications";
+import { PrincipalInvestigator } from "@/components/public/principal-investigator";
+import { FeaturedPeople } from "@/components/public/featured-people";
+import { LatestNews } from "@/components/public/latest-news";
+import { OpportunitiesCTA } from "@/components/public/opportunities-cta";
+import { ResearchGallery } from "@/components/public/research-gallery";
+import { ContactPreview } from "@/components/public/contact-preview";
+import { Footer } from "@/components/public/footer";
 
-export default function Home() {
+import {
+  MOCK_HERO_DATA,
+  MOCK_METRICS,
+  MOCK_RESEARCH_AREAS,
+  MOCK_PROJECTS,
+  MOCK_PUBLICATIONS,
+  MOCK_PEOPLE,
+  MOCK_NEWS,
+} from "@/data/mock-homepage";
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-main)] transition-colors duration-300 flex flex-col justify-between">
+      {/* 1. Sticky Navigation */}
+      <Navbar />
+
+      <main className="flex-grow">
+        {/* 2. Hero Section with Signature Scientific Network */}
+        <Hero data={MOCK_HERO_DATA} />
+
+        {/* 3. Research Metrics Strip */}
+        <ResearchStats metrics={MOCK_METRICS} />
+
+        {/* 4. Research Focus ("What We Study") */}
+        <ResearchAreas areas={MOCK_RESEARCH_AREAS} />
+
+        {/* 5. Completed & Flagship Projects Showcase */}
+        <FeaturedProject projects={MOCK_PROJECTS} />
+
+        {/* 5b. Collaborating Institutions & Research Sponsors Ribbon */}
+        <PartnersMarquee />
+
+        {/* 6. Featured Publications */}
+        <FeaturedPublications publications={MOCK_PUBLICATIONS} />
+
+        {/* 7. Principal Investigator & Lab Director Spotlight */}
+        <PrincipalInvestigator />
+
+        {/* 8. People Section ("The People Behind The Science") */}
+        <FeaturedPeople people={MOCK_PEOPLE} />
+
+        {/* 9. Latest News & Breakthroughs */}
+        <LatestNews news={MOCK_NEWS} />
+
+        {/* 10. Opportunities CTA */}
+        <OpportunitiesCTA />
+
+        {/* 11. Laboratory & Field Gallery Showcase */}
+        <ResearchGallery />
+
+        {/* 12. Contact & Campus Location Preview */}
+        <ContactPreview />
       </main>
+
+      {/* 14. Global Footer */}
+      <Footer />
     </div>
   );
 }

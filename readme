@@ -1,0 +1,1272 @@
+# Environmental Health & Ecotoxicology Laboratory
+
+## Landing Page — Product Requirements & UX Design
+
+---
+
+# 1. Page Objective
+
+The homepage is the digital front door of the laboratory.
+
+It must communicate within the first few seconds:
+
+1. Who the laboratory is
+2. What scientific problems it studies
+3. Why its research matters
+4. What research is currently happening
+5. Who is behind the research
+6. How students, researchers, institutions, and collaborators can connect
+
+The homepage should feel like a **modern international research laboratory**, not a generic university department website.
+
+### Primary emotional response
+
+The visitor should feel:
+
+**Scientific → Credible → Modern → Environmental → Human-centered → Research-driven**
+
+---
+
+# 2. Overall Visual Direction
+
+## Design concept
+
+### "Living Science"
+
+The interface combines:
+
+* Environmental photography
+* Laboratory photography
+* Scientific data visualization
+* Biological patterns
+* Network structures
+* Minimal organic shapes
+* Clean typography
+* Green/teal scientific color system
+
+Avoid:
+
+* Cartoonish environmental graphics
+* Excessive leaf icons
+* Generic stock-photo aesthetics
+* Excessive glassmorphism
+* Excessive gradients
+* Heavy shadows
+* Overly rounded startup-style cards
+* Old-fashioned university layouts
+
+---
+
+# 3. Brand System
+
+## Primary colors
+
+Primary Green:
+`#14532D`
+
+Secondary Green:
+`#2F7D4A`
+
+Scientific Teal:
+`#0F766E`
+
+Light Background:
+`#F4F8F5`
+
+Warm White:
+`#FAFAF7`
+
+Primary Text:
+`#17201B`
+
+Secondary Text:
+`#64706A`
+
+Highlight:
+`#84CC16`
+
+---
+
+# 4. Typography
+
+## Primary heading font
+
+Manrope
+
+Weights:
+
+* 600
+* 700
+* 800
+
+## Body font
+
+Inter
+
+Weights:
+
+* 400
+* 500
+* 600
+
+## Scientific/data font
+
+IBM Plex Mono
+
+Use only for:
+
+* Data
+* Numbers
+* Measurements
+* Labels
+* Metadata
+* Scientific indicators
+
+Typography must have generous spacing and excellent readability.
+
+---
+
+# 5. Global Navigation
+
+The navigation remains clean and minimal.
+
+## Left
+
+Laboratory logo
+
+Logo +:
+
+**Environmental Health & Ecotoxicology Laboratory**
+
+Small supporting text:
+
+**[Department / University Name]**
+
+## Center
+
+Navigation:
+
+* Research
+* Projects
+* People
+* Publications
+* News & Insights
+* Opportunities
+* About
+
+## Right
+
+Search icon
+
+Contact button
+
+### Primary CTA
+
+**Connect With Us**
+
+---
+
+# 6. Navigation Behavior
+
+Desktop:
+
+Sticky navigation.
+
+When scrolling:
+
+* Navigation becomes slightly smaller
+* Background becomes opaque
+* Subtle border appears
+* Logo remains visible
+
+Mobile:
+
+Use a clean hamburger menu.
+
+Menu opens as a full-height navigation panel.
+
+Primary CTA remains easily accessible.
+
+---
+
+# 7. HERO SECTION
+
+This is the most important section of the homepage.
+
+## Hero objective
+
+Immediately establish:
+
+**Environmental science + laboratory research + human/ecosystem health**
+
+---
+
+## Hero layout
+
+Use a split visual composition.
+
+Approximately:
+
+**45% text / 55% visual**
+
+Left:
+
+Eyebrow
+
+Large headline
+
+Supporting text
+
+Primary CTA
+
+Secondary CTA
+
+Right:
+
+Large environmental/laboratory image.
+
+---
+
+# 8. Hero Content
+
+## Eyebrow
+
+`ENVIRONMENTAL SCIENCE • HEALTH • ECOSYSTEMS`
+
+Small uppercase typography with letter spacing.
+
+---
+
+## Main headline
+
+Suggested:
+
+### "Understanding Environmental Risks. Protecting Health."
+
+Large, bold typography.
+
+Potential alternative:
+
+### "Science for Healthier Environments."
+
+The final headline should be editable from the admin panel.
+
+---
+
+## Supporting copy
+
+Example:
+
+"We investigate environmental contaminants, ecological responses, and exposure pathways to generate evidence for healthier ecosystems and communities."
+
+Maximum width:
+
+~600px.
+
+---
+
+## Hero CTAs
+
+Primary:
+
+**Explore Our Research →**
+
+Secondary:
+
+**Meet Our Lab**
+
+---
+
+# 9. HERO VISUAL — Signature Interaction
+
+The hero image should not simply be a photograph.
+
+Overlay a subtle scientific network.
+
+Example pathway:
+
+`Environment`
+
+↓
+
+`Contaminant`
+
+↓
+
+`Exposure`
+
+↓
+
+`Biological Response`
+
+↓
+
+`Human & Ecosystem Health`
+
+These nodes appear around the image.
+
+Use extremely subtle animated connecting lines.
+
+On hover:
+
+A node becomes highlighted.
+
+The corresponding scientific label becomes slightly brighter.
+
+This becomes the laboratory's **signature visual language**.
+
+---
+
+# 10. Hero Image Behavior
+
+Desktop:
+
+Large cinematic image.
+
+Possible imagery:
+
+* Scientist collecting environmental samples
+* Water sampling
+* Soil sampling
+* Laboratory analysis
+* Microscopy
+* Ecotoxicology experiment
+
+Image should feel documentary and authentic.
+
+Avoid obvious generic stock photography.
+
+The admin should be able to replace the hero image.
+
+---
+
+# 11. HERO MICRO-ANIMATION
+
+On initial page load:
+
+1. Background/image fades in
+2. Headline appears
+3. Supporting copy appears
+4. CTA appears
+5. Scientific network nodes animate into position
+
+Animation should be approximately:
+
+300–700ms.
+
+Nothing should feel flashy.
+
+The scientific network should move very slowly.
+
+---
+
+# 12. QUICK RESEARCH INDICATORS
+
+Immediately below the hero, introduce a compact scientific indicator bar.
+
+Example:
+
+`25+ Research Projects`
+
+`50+ Publications`
+
+`10+ Collaborating Institutions`
+
+`30+ Students & Researchers`
+
+Numbers must be dynamic and editable through admin.
+
+These are not hardcoded.
+
+---
+
+# 13. RESEARCH FOCUS SECTION
+
+## Section label
+
+`WHAT WE STUDY`
+
+## Heading
+
+### "Research at the intersection of environment, biology and health."
+
+Short introductory paragraph.
+
+---
+
+## Research cards
+
+Initially display 4–6 major research areas.
+
+Example:
+
+### 01
+
+**Environmental Contaminants**
+
+Detection, characterization and environmental fate of contaminants.
+
+### 02
+
+**Ecotoxicology**
+
+Understanding biological responses to environmental stressors.
+
+### 03
+
+**Environmental Health**
+
+Investigating exposure pathways and potential implications for human health.
+
+### 04
+
+**Microplastics**
+
+Studying occurrence, exposure and biological effects of microplastics.
+
+### 05
+
+**Water & Soil Quality**
+
+Understanding contamination and ecosystem health.
+
+### 06
+
+**Sustainable Environmental Solutions**
+
+Evidence-based approaches for healthier ecosystems.
+
+---
+
+# 14. RESEARCH CARD INTERACTION
+
+Cards should have minimal borders.
+
+On hover:
+
+* Border becomes green
+* Icon subtly moves
+* Background changes slightly
+* Arrow appears
+* Card expands slightly
+
+Clicking a card opens the relevant Research Area page.
+
+All research areas are controlled through the admin panel.
+
+---
+
+# 15. "RESEARCH IN ACTION" SECTION
+
+This should make the laboratory feel active.
+
+Instead of simply saying what the lab researches, show **how research happens**.
+
+Use a horizontal scientific workflow:
+
+### FIELD
+
+Environmental Sampling
+
+↓
+
+### LAB
+
+Sample Analysis
+
+↓
+
+### DATA
+
+Data & Statistical Analysis
+
+↓
+
+### BIOLOGY
+
+Ecological / Biological Response
+
+↓
+
+### IMPACT
+
+Evidence → Policy → Healthier Environment
+
+This is a highly important visual section.
+
+It communicates the laboratory's methodology without requiring a long paragraph.
+
+---
+
+# 16. FEATURED PROJECT SECTION
+
+## Label
+
+`RESEARCH IN ACTION`
+
+## Heading
+
+### "From field observations to scientific evidence."
+
+Display one featured project prominently.
+
+Example structure:
+
+Large image on left.
+
+Right:
+
+Project status:
+
+`● ONGOING`
+
+Project title
+
+Short description
+
+Research areas
+
+Researchers
+
+Timeline
+
+CTA:
+
+**Explore Project →**
+
+---
+
+# 17. PROJECT VISUAL
+
+Use a large editorial image.
+
+Possible images:
+
+* Field sampling
+* Laboratory analysis
+* Microscopy
+* Environmental site
+* Experimental setup
+
+Add small scientific metadata around the image.
+
+Example:
+
+`FIELD STUDY`
+
+`FRESHWATER`
+
+`ECOTOXICOLOGY`
+
+This creates a premium scientific editorial feel.
+
+---
+
+# 18. FEATURED PUBLICATIONS
+
+## Label
+
+`SELECTED RESEARCH`
+
+## Heading
+
+### "Our research, published."
+
+Show 3–4 recent/featured publications.
+
+Each card:
+
+Publication type
+
+Year
+
+Title
+
+Authors
+
+Journal
+
+Research area
+
+DOI / external link
+
+CTA:
+
+**View Publication →**
+
+---
+
+# 19. Publication Interaction
+
+On hover:
+
+The card reveals:
+
+**View DOI →**
+
+The user can open the external publication/DOI.
+
+A "View All Publications" button leads to the Publications page.
+
+Admin controls which publications are featured.
+
+---
+
+# 20. RESEARCH PEOPLE SECTION
+
+## Label
+
+`THE PEOPLE BEHIND THE SCIENCE`
+
+## Heading
+
+### "Meet the researchers."
+
+Display:
+
+* Principal Investigator
+* Researchers
+* Graduate students
+* Selected team members
+
+Use high-quality professional portraits.
+
+Each profile includes:
+
+Name
+
+Position
+
+Research interest
+
+---
+
+## Interaction
+
+Hovering a profile:
+
+* Image subtly zooms
+* Research interests appear
+* Arrow appears
+
+Click:
+
+**Full Researcher Profile →**
+
+---
+
+# 21. RESEARCH NETWORK VISUAL
+
+Introduce a modern interactive visualization.
+
+Center:
+
+### LAB
+
+Connected nodes:
+
+**Researchers**
+
+**Projects**
+
+**Research Areas**
+
+**Publications**
+
+**Collaborators**
+
+This is not merely decoration.
+
+It visually communicates that:
+
+> Research → People → Projects → Publications → Impact
+
+Clicking a node can take the visitor to the relevant page.
+
+This could become one of the most distinctive features of the website.
+
+---
+
+# 22. NEWS & INSIGHTS
+
+## Label
+
+`LATEST FROM THE LAB`
+
+## Heading
+
+### "Research, people and discoveries."
+
+Show three latest items.
+
+Categories:
+
+* Research Update
+* Lab News
+* Event
+* Publication
+* Achievement
+* Insight
+
+Each card:
+
+Image
+
+Category
+
+Date
+
+Title
+
+Short description
+
+Read more →
+
+---
+
+# 23. OPPORTUNITIES CTA
+
+This should be visually prominent.
+
+Use a deep-green section.
+
+Headline:
+
+### "Interested in doing research with us?"
+
+Supporting copy:
+
+"Explore internship, student research and collaboration opportunities."
+
+Buttons:
+
+**Explore Opportunities**
+
+**Apply for Internship**
+
+This section is specifically designed to convert interested students into applicants.
+
+---
+
+# 24. COLLABORATION SECTION
+
+Target:
+
+* Researchers
+* Universities
+* NGOs
+* Government agencies
+* Industry
+* Environmental organizations
+
+Headline:
+
+### "Let's work together."
+
+Supporting copy:
+
+"We welcome research collaborations, knowledge exchange and partnerships that contribute to healthier environments."
+
+CTA:
+
+**Start a Conversation →**
+
+---
+
+# 25. CONTACT PREVIEW
+
+Near the bottom:
+
+Display:
+
+Laboratory name
+
+University
+
+Department
+
+Location
+
+Email
+
+Phone if applicable
+
+Social media
+
+Map preview
+
+CTA:
+
+**Contact the Lab →**
+
+---
+
+# 26. FOOTER
+
+Deep forest green background.
+
+Left:
+
+Laboratory logo
+
+Laboratory name
+
+University / department
+
+Short statement:
+
+**Science for healthier environments.**
+
+Navigation columns:
+
+### Explore
+
+Research
+Projects
+People
+Publications
+
+### Connect
+
+Opportunities
+Contact
+Collaborate
+
+### Follow
+
+Facebook
+LinkedIn
+YouTube
+Research profiles
+
+Bottom:
+
+Copyright
+
+Privacy Policy
+
+Terms / institutional links
+
+---
+
+# 27. ADMIN CONTROL — HOMEPAGE
+
+Every dynamic section must be controllable from the admin panel.
+
+Admin should be able to manage:
+
+### Hero
+
+* Headline
+* Description
+* Hero image/video
+* CTA labels
+* CTA destinations
+* Scientific network labels
+* Visibility
+
+### Statistics
+
+* Number
+* Label
+* Icon
+* Display order
+* Visibility
+
+### Research Areas
+
+* Create
+* Edit
+* Delete
+* Reorder
+* Feature/unfeature
+
+### Featured Project
+
+* Select project
+* Change featured image
+* Change display order
+
+### Publications
+
+* Select featured publications
+* Reorder
+
+### Team
+
+* Select featured people
+* Reorder
+
+### News
+
+* Select featured posts
+* Reorder
+
+### Opportunities
+
+* Select active opportunity
+* CTA text
+
+### Collaboration CTA
+
+* Heading
+* Description
+* Button
+
+---
+
+# 28. CMS Principle
+
+The homepage should NOT be hardcoded.
+
+The admin should be able to change content without a developer.
+
+For example:
+
+Admin changes:
+
+`25+ Research Projects`
+
+to:
+
+`42 Research Projects`
+
+The website automatically updates.
+
+---
+
+# 29. Homepage Content Relationships
+
+The homepage should pull content from the central database.
+
+For example:
+
+Research Area
+
+→ Projects
+
+→ Researchers
+
+→ Publications
+
+→ News
+
+Therefore, if an admin creates a new project and connects it to a research area and researchers, those relationships can automatically appear throughout the website.
+
+---
+
+# 30. Responsive Design
+
+## Desktop
+
+Full experience.
+
+Interactive research network.
+
+Large hero.
+
+Editorial layouts.
+
+Hover interactions.
+
+## Tablet
+
+Reduce visual complexity.
+
+Maintain major interactions.
+
+## Mobile
+
+Prioritize:
+
+Hero
+
+Research
+
+Projects
+
+Publications
+
+People
+
+Opportunities
+
+Contact
+
+Interactive network becomes a simplified vertical ecosystem instead of a large visualization.
+
+Cards become horizontal/vertical swipe-friendly components.
+
+---
+
+# 31. Accessibility
+
+Must support:
+
+* Keyboard navigation
+* Visible focus states
+* Proper heading hierarchy
+* Alt text
+* Accessible buttons
+* Good contrast
+* Reduced-motion preference
+* Screen-reader-friendly navigation
+
+Animations must never be necessary to understand content.
+
+---
+
+# 32. Performance
+
+Homepage should prioritize:
+
+1. Fast first contentful paint
+2. Optimized images
+3. Lazy loading below-the-fold media
+4. Responsive image sizes
+5. Minimal JavaScript animation
+6. No unnecessary libraries
+
+The scientific animations should not compromise performance.
+
+---
+
+# 33. SEO
+
+Homepage should include editable admin fields for:
+
+* Meta title
+* Meta description
+* OG title
+* OG description
+* OG image
+* Canonical URL
+* Structured data
+
+Recommended structured data:
+
+* Organization
+* ResearchOrganization where appropriate
+* Person
+* Article
+* ScholarlyArticle where appropriate
+
+---
+
+# 34. Homepage User Journeys
+
+## Student
+
+Home
+
+→ Research
+
+→ Research Area
+
+→ Project
+
+→ Opportunity
+
+→ Internship Application
+
+---
+
+## Researcher
+
+Home
+
+→ Research
+
+→ Projects
+
+→ People
+
+→ Publications
+
+→ Collaboration
+
+→ Contact
+
+---
+
+## General visitor
+
+Home
+
+→ About
+
+→ Research
+
+→ Projects
+
+→ News
+
+---
+
+## Potential collaborator
+
+Home
+
+→ Research
+
+→ Projects
+
+→ Publications
+
+→ Collaboration
+
+→ Contact
+
+---
+
+# 35. Homepage Success Criteria
+
+A visitor should understand the laboratory's identity without scrolling excessively.
+
+Within the first screen:
+
+**Who we are**
+
+**What we study**
+
+**Why it matters**
+
+**Primary action**
+
+Within approximately 2–3 scrolls:
+
+**Research areas**
+
+**Active research**
+
+**Research outputs**
+
+By the bottom:
+
+**Who works here**
+
+**Current opportunities**
+
+**How to collaborate**
+
+---
+
+# 36. Signature Design Principle
+
+The homepage should repeatedly reinforce one visual idea:
+
+### Environment → Contaminant → Exposure → Biological Response → Health → Impact
+
+This scientific pathway becomes the visual identity of the website.
+
+It should appear subtly through:
+
+* Hero network
+* Research workflow
+* Project pages
+* Research relationships
+* Data visualizations
+* Page transitions
+* Small decorative elements
+
+This creates a visual language that is unique to an **Environmental Health & Ecotoxicology Laboratory** rather than another generic green website.
+
+---
+
+# 37. Overall Homepage Flow
+
+FINAL STRUCTURE:
+
+```text
+NAVIGATION
+        ↓
+HERO
+"Understanding Environmental Risks.
+Protecting Health."
+        ↓
+RESEARCH INDICATORS
+Projects | Publications | Collaborations | Researchers
+        ↓
+WHAT WE STUDY
+Research Areas
+        ↓
+RESEARCH IN ACTION
+Field → Lab → Data → Biology → Impact
+        ↓
+FEATURED PROJECT
+        ↓
+SELECTED PUBLICATIONS
+        ↓
+PEOPLE BEHIND THE SCIENCE
+        ↓
+RESEARCH NETWORK
+People ↔ Projects ↔ Research ↔ Publications
+        ↓
+LATEST FROM THE LAB
+        ↓
+OPPORTUNITIES
+"Interested in doing research with us?"
+        ↓
+COLLABORATION
+"Let's work together."
+        ↓
+CONTACT PREVIEW
+        ↓
+FOOTER
+```
+
+# 38. Design Goal
+
+The final homepage should feel like:
+
+**A research institute × environmental science laboratory × modern scientific platform.**
+
+It should communicate:
+
+### "We don't just study the environment. We generate evidence that connects environmental change, biological response and human health."
+
+
+proejct arki
+src/
+├── app/
+│   ├── (public)/
+│   │   ├── page.tsx
+│   │   ├── research/
+│   │   ├── projects/
+│   │   ├── people/
+│   │   ├── publications/
+│   │   ├── news/
+│   │   ├── opportunities/
+│   │   ├── about/
+│   │   └── contact/
+│   │
+│   ├── admin/
+│   │   ├── dashboard/
+│   │   ├── research/
+│   │   ├── projects/
+│   │   ├── people/
+│   │   ├── publications/
+│   │   ├── news/
+│   │   ├── opportunities/
+│   │   ├── applications/
+│   │   ├── messages/
+│   │   ├── media/
+│   │   └── settings/
+│   │
+│   └── api/
+│
+├── components/
+│   ├── ui/
+│   ├── public/
+│   ├── admin/
+│   └── shared/
+│
+├── lib/
+│   ├── supabase/
+│   ├── auth/
+│   ├── validations/
+│   └── utils/
+│
+├── types/
+│
+└── config/
