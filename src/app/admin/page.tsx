@@ -84,7 +84,7 @@ export default function AdminDashboardPage() {
         getPublishedPublications({}, true),
         getTeamMembers(),
         getPublishedNews({}, true),
-        (supabase as any).from("applications").select("*").order("created_at", { ascending: false }).catch(() => ({ data: [] })),
+        (supabase as any).from("applications").select("*").order("created_at", { ascending: false }),
       ]);
 
       setProjects(allProjects || []);
