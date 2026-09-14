@@ -225,7 +225,7 @@ export default function AdminProjectsPage() {
     }));
   };
 
-  // Image Upload handler
+  // Hero Image Upload handler
   const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -237,9 +237,9 @@ export default function AdminProjectsPage() {
         hero_image: publicUrl,
         image_alt: prev.image_alt || prev.title,
       }));
-      setStatusNotification({ type: "success", message: "Image uploaded to project-media storage!" });
+      setStatusNotification({ type: "success", message: "Hero image uploaded to project-media storage!" });
     } catch {
-      setStatusNotification({ type: "error", message: "Failed to upload image." });
+      setStatusNotification({ type: "error", message: "Failed to upload hero image." });
     } finally {
       setUploadingImage(false);
     }
@@ -277,9 +277,12 @@ export default function AdminProjectsPage() {
 
     try {
       const cleanObjectives = formData.objectives.filter((o) => o.trim().length > 0);
+      const cleanGallery = (formData.gallery || []).filter((g) => g && g.trim().length > 0);
+
       const payload: ProjectFormData = {
         ...formData,
         objectives: cleanObjectives,
+        gallery: cleanGallery,
         slug: formData.slug || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
       };
 
@@ -428,7 +431,7 @@ export default function AdminProjectsPage() {
               { id: "people", label: "03 Personnel & Partners", icon: Users },
               { id: "areas", label: "04 Research Areas", icon: FlaskConical },
               { id: "grant", label: "05 Status & Grant", icon: Calendar },
-              { id: "media", label: "06 Hero Media", icon: ImageIcon },
+              { id: "media", label: "06 Media & Images", icon: ImageIcon },
               { id: "visibility", label: "07 Publishing", icon: Globe },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -438,7 +441,7 @@ export default function AdminProjectsPage() {
                   key={tab.id}
                   type="button"
                   onClick={() => setEditorSection(tab.id as any)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     isActive
                       ? "bg-emerald-600 text-white shadow-sm font-bold"
                       : isLight
@@ -453,29 +456,28 @@ export default function AdminProjectsPage() {
             })}
           </div>
 
-          {/* Form Content in 2-Column Spacious Layout */}
-          <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* LEFT MAIN CANVAS (COL-SPAN-8) */}
-            <div className="lg:col-span-8 space-y-6">
-              {/* 1. OVERVIEW & IDENTITY */}
-              {(editorSection === "all" || editorSection === "basic") && (
-                <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className={`text-base font-bold ${headingText}`}>
-                        01. General Overview &amp; Narrative
-                      </h2>
-                      <p className={`text-xs ${subText}`}>
-                        Primary headline, slug identifier, and expanded contextual background.
-                      </p>
-                    </div>
+          {/* Form Content - Clean, Full-Width Structured Layout */}
+          <form onSubmit={handleSave} className="space-y-6">
+            {/* 1. OVERVIEW & IDENTITY */}
+            {(editorSection === "all" || editorSection === "basic") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <FileText className="w-5 h-5" />
                   </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      01. General Overview &amp; Narrative
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Primary headline, slug identifier, and expanded contextual background.
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="space-y-4">
-                    <div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-8">
                       <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                         Project Title <span className="text-red-500">*</span>
                       </label>
@@ -489,12 +491,12 @@ export default function AdminProjectsPage() {
                       />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-4">
                       <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                         Slug (URL Identifier) <span className="text-red-500">*</span>
                       </label>
-                      <div className="flex items-center gap-2">
-                        <span className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2.5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-500 shrink-0">
                           /projects/
                         </span>
                         <input
@@ -502,537 +504,460 @@ export default function AdminProjectsPage() {
                           required
                           value={formData.slug}
                           onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                          placeholder="microplastic-exposure-freshwater-ecosystems"
-                          className={`flex-1 px-4 py-2.5 text-xs sm:text-sm font-mono rounded-xl border outline-none transition ${inputBg}`}
+                          placeholder="microplastic-exposure-freshwater"
+                          className={`w-full px-3 py-3 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
                         />
                       </div>
                     </div>
-
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Short Description (Archive Summary Card) <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        required
-                        rows={2}
-                        value={formData.short_description}
-                        onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
-                        placeholder="Brief 1-2 sentence synopsis featured across the public project directory cards..."
-                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Full Project Overview &amp; Expanded Narrative
-                      </label>
-                      <textarea
-                        rows={7}
-                        value={formData.full_description}
-                        onChange={(e) => setFormData({ ...formData, full_description: e.target.value })}
-                        placeholder="Provide detailed background, scientific rationale, field sampling context, and comprehensive narrative for the project detail page..."
-                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition leading-relaxed ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 2. SCIENTIFIC CORE & METHODOLOGY */}
-              {(editorSection === "all" || editorSection === "science") && (
-                <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                      <Target className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className={`text-base font-bold ${headingText}`}>
-                        02. Scientific Core &amp; Methodology
-                      </h2>
-                      <p className={`text-xs ${subText}`}>
-                        Hypothesis, step-by-step milestones, analytical sequences, and field stations.
-                      </p>
-                    </div>
                   </div>
 
-                  <div className="space-y-5">
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Core Research Question / Hypothesis
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formData.research_question}
-                        onChange={(e) => setFormData({ ...formData, research_question: e.target.value })}
-                        placeholder="What primary scientific hypothesis or investigative question does this grant resolve?"
-                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-
-                    {/* Dynamic Milestone Objectives */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2.5">
-                        <div>
-                          <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
-                            Project Objectives &amp; Milestones
-                          </label>
-                          <p className={`text-[11px] ${subText}`}>
-                            Rendered as ordered milestone cards on public project detail page.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, objectives: [...(formData.objectives || []), ""] })}
-                          className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 flex items-center gap-1.5 transition cursor-pointer"
-                        >
-                          <PlusCircle className="w-3.5 h-3.5" />
-                          <span>Add Milestone</span>
-                        </button>
-                      </div>
-
-                      {(!formData.objectives || formData.objectives.length === 0) ? (
-                        <div className={`p-5 rounded-2xl border border-dashed text-center ${subText} text-xs space-y-2`}>
-                          <p>No objectives configured yet.</p>
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, objectives: [""] })}
-                            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 underline"
-                          >
-                            + Add first objective
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2.5">
-                          {formData.objectives.map((obj, idx) => (
-                            <div key={idx} className="flex items-center gap-2.5">
-                              <span className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
-                                {String(idx + 1).padStart(2, "0")}
-                              </span>
-                              <input
-                                type="text"
-                                value={obj}
-                                onChange={(e) => {
-                                  const updated = [...formData.objectives];
-                                  updated[idx] = e.target.value;
-                                  setFormData({ ...formData, objectives: updated });
-                                }}
-                                placeholder={`Milestone Objective ${idx + 1}...`}
-                                className={`flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = formData.objectives.filter((_, i) => i !== idx);
-                                  setFormData({ ...formData, objectives: updated });
-                                }}
-                                className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
-                                title="Remove milestone"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Methodology */}
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                        Methodology Sequence
-                      </label>
-                      <p className={`text-[11px] ${subText} mb-2`}>
-                        Analytical workflow sequence. Use &quot;→&quot; to demarcate progressive phases.
-                      </p>
-                      <textarea
-                        rows={3}
-                        value={formData.methodology}
-                        onChange={(e) => setFormData({ ...formData, methodology: e.target.value })}
-                        placeholder="e.g. NOAA manta trawl sampling → Alkaline KOH tissue digestion → μ-FTIR spectral mapping → Toxicogenomic biomarker profiling"
-                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-
-                    {/* Study Area & Deliverables Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                          Study Area / Location Name
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.study_area}
-                          onChange={(e) => setFormData({ ...formData, study_area: e.target.value })}
-                          placeholder="e.g. Meghna River Estuary & Coastal Transects"
-                          className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                        />
-                      </div>
-                      <div>
-                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                          Outputs &amp; Deliverables
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.outputs}
-                          onChange={(e) => setFormData({ ...formData, outputs: e.target.value })}
-                          placeholder="e.g. 3 Peer Papers, 1 Open Spectral Library, Policy Brief"
-                          className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Study Area Detailed Description &amp; GPS Network
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formData.study_area_description}
-                        onChange={(e) => setFormData({ ...formData, study_area_description: e.target.value })}
-                        placeholder="Geographic coordinates, environmental conditions, and sampling station network details..."
-                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 3. PERSONNEL & COLLABORATING PARTNERS */}
-              {(editorSection === "all" || editorSection === "people") && (
-                <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className={`text-base font-bold ${headingText}`}>
-                        03. Personnel &amp; Global Collaborators
-                      </h2>
-                      <p className={`text-xs ${subText}`}>
-                        Lab investigators assigned to project and collaborating institutional partners.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    {/* Researcher Assignment */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
-                          Lab Researchers &amp; Investigators
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              researcher_assignments: [
-                                ...formData.researcher_assignments,
-                                { person_id: SEED_RESEARCHERS[0].id, role_in_project: "Researcher" },
-                              ],
-                            })
-                          }
-                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <PlusCircle className="w-3.5 h-3.5" /> Assign Person
-                        </button>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {formData.researcher_assignments.map((assignment, idx) => (
-                          <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
-                            <select
-                              value={assignment.person_id}
-                              onChange={(e) => {
-                                const updated = [...formData.researcher_assignments];
-                                updated[idx].person_id = e.target.value;
-                                setFormData({ ...formData, researcher_assignments: updated });
-                              }}
-                              className={`w-full sm:w-1/2 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
-                            >
-                              {SEED_RESEARCHERS.map((person) => (
-                                <option key={person.id} value={person.id}>
-                                  {person.name} ({person.position})
-                                </option>
-                              ))}
-                            </select>
-
-                            <input
-                              type="text"
-                              value={assignment.role_in_project}
-                              onChange={(e) => {
-                                const updated = [...formData.researcher_assignments];
-                                updated[idx].role_in_project = e.target.value;
-                                setFormData({ ...formData, researcher_assignments: updated });
-                              }}
-                              placeholder="Role (e.g. Principal Investigator, Lead Analyst)"
-                              className={`w-full sm:flex-1 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
-                            />
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = formData.researcher_assignments.filter((_, i) => i !== idx);
-                                setFormData({ ...formData, researcher_assignments: updated });
-                              }}
-                              className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Collaborating Institutions */}
-                    <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                      <div className="flex items-center justify-between">
-                        <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
-                          Collaborating Institutions &amp; Partners
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              collaborators: [
-                                ...formData.collaborators,
-                                { name: "", institution: "", role: "Collaborating Partner" },
-                              ],
-                            })
-                          }
-                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <PlusCircle className="w-3.5 h-3.5" /> Add Partner
-                        </button>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {formData.collaborators.map((collab, idx) => (
-                          <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
-                            <input
-                              type="text"
-                              value={collab.name}
-                              onChange={(e) => {
-                                const updated = [...formData.collaborators];
-                                updated[idx].name = e.target.value;
-                                setFormData({ ...formData, collaborators: updated });
-                              }}
-                              placeholder="Organization / Institution Name"
-                              className={`w-full sm:w-1/3 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
-                            />
-                            <input
-                              type="text"
-                              value={collab.institution}
-                              onChange={(e) => {
-                                const updated = [...formData.collaborators];
-                                updated[idx].institution = e.target.value;
-                                setFormData({ ...formData, collaborators: updated });
-                              }}
-                              placeholder="Department / Division"
-                              className={`w-full sm:w-1/3 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
-                            />
-                            <input
-                              type="text"
-                              value={collab.role}
-                              onChange={(e) => {
-                                const updated = [...formData.collaborators];
-                                updated[idx].role = e.target.value;
-                                setFormData({ ...formData, collaborators: updated });
-                              }}
-                              placeholder="Partnership Role"
-                              className={`w-full sm:flex-1 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = formData.collaborators.filter((_, i) => i !== idx);
-                                setFormData({ ...formData, collaborators: updated });
-                              }}
-                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 4. RESEARCH PILLARS & THEMATIC AREAS */}
-              {(editorSection === "all" || editorSection === "areas") && (
-                <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                      <FlaskConical className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className={`text-base font-bold ${headingText}`}>
-                        04. Research Focus Pillars
-                      </h2>
-                      <p className={`text-xs ${subText}`}>
-                        Check all thematic scientific areas that categorize this research.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    {researchAreas.map((area) => {
-                      const isSelected = formData.research_area_ids.includes(area.id);
-                      return (
-                        <div
-                          key={area.id}
-                          onClick={() => {
-                            if (isSelected) {
-                              setFormData({
-                                ...formData,
-                                research_area_ids: formData.research_area_ids.filter((id) => id !== area.id),
-                              });
-                            } else {
-                              setFormData({
-                                ...formData,
-                                research_area_ids: [...formData.research_area_ids, area.id],
-                              });
-                            }
-                          }}
-                          className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
-                            isSelected
-                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 shadow-sm"
-                              : isLight
-                              ? "border-slate-200 hover:border-slate-300 bg-slate-50/50"
-                              : "border-slate-800 hover:border-slate-700 bg-slate-900/40"
-                          }`}
-                        >
-                          <div
-                            className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border ${
-                              isSelected
-                                ? "bg-emerald-600 border-emerald-600 text-white"
-                                : "border-slate-400 dark:border-slate-600"
-                            }`}
-                          >
-                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                          </div>
-                          <div>
-                            <div className="font-bold text-xs sm:text-sm">{area.title}</div>
-                            {area.description && (
-                              <div className={`text-[11px] ${subText} line-clamp-2 mt-1`}>
-                                {area.description}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT INSPECTOR PANEL (COL-SPAN-4 / STICKY SIDEBAR) */}
-            <div className="lg:col-span-4 space-y-6">
-              {/* 5. PUBLISHING & VISIBILITY */}
-              {(editorSection === "all" || editorSection === "visibility") && (
-                <div className={`p-6 rounded-3xl border space-y-4 ${cardBg}`}>
-                  <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    <Globe className="w-4 h-4 text-emerald-500" />
-                    <h3 className={`text-sm font-bold ${headingText}`}>
-                      Publishing &amp; Spotlight
-                    </h3>
-                  </div>
-
-                  {/* Public Status Toggle */}
-                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800">
-                    <div>
-                      <div className="font-bold text-xs text-slate-900 dark:text-white">
-                        Public Status
-                      </div>
-                      <div className={`text-[11px] ${subText}`}>
-                        {formData.is_published ? "Live on public web" : "Hidden draft only"}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, is_published: !formData.is_published })}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        formData.is_published
-                          ? "bg-emerald-600 text-white shadow-sm"
-                          : "bg-amber-600 text-white"
-                      }`}
-                    >
-                      {formData.is_published ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5" /> PUBLISHED
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="w-3.5 h-3.5" /> DRAFT
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Featured Toggle */}
-                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800">
-                    <div>
-                      <div className="font-bold text-xs text-slate-900 dark:text-white">
-                        Spotlight Feature
-                      </div>
-                      <div className={`text-[11px] ${subText}`}>
-                        Promoted on homepage
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        formData.is_featured
-                          ? "bg-amber-500 text-slate-950 shadow-sm"
-                          : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                      }`}
-                    >
-                      <Star className={`w-3.5 h-3.5 ${formData.is_featured ? "fill-slate-950" : ""}`} />
-                      <span>{formData.is_featured ? "FEATURED" : "STANDARD"}</span>
-                    </button>
-                  </div>
-
-                  {/* Display Order */}
                   <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                      Display Priority Order
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Short Description (Archive Summary Card) <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="number"
-                      value={formData.display_order}
-                      onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
-                      className={`w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                    <textarea
+                      required
+                      rows={2}
+                      value={formData.short_description}
+                      onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
+                      placeholder="Brief 1-2 sentence synopsis featured across the public project directory cards..."
+                      className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
                     />
-                    <p className={`text-[10px] ${subText} mt-1`}>
-                      Lower numbers appear first in the public explorer.
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Full Project Overview &amp; Expanded Narrative
+                    </label>
+                    <textarea
+                      rows={7}
+                      value={formData.full_description}
+                      onChange={(e) => setFormData({ ...formData, full_description: e.target.value })}
+                      placeholder="Provide detailed background, scientific rationale, field sampling context, and comprehensive narrative for the project detail page..."
+                      className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition leading-relaxed ${inputBg}`}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 2. SCIENTIFIC CORE & METHODOLOGY */}
+            {(editorSection === "all" || editorSection === "science") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      02. Scientific Core &amp; Methodology
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Hypothesis, step-by-step milestones, analytical sequences, and field stations.
                     </p>
                   </div>
                 </div>
-              )}
 
-              {/* 6. STATUS, GRANT & TIMELINE */}
-              {(editorSection === "all" || editorSection === "grant") && (
-                <div className={`p-6 rounded-3xl border space-y-4 ${cardBg}`}>
-                  <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-                    <Calendar className="w-4 h-4 text-emerald-500" />
-                    <h3 className={`text-sm font-bold ${headingText}`}>
-                      Status &amp; Grant Funding
-                    </h3>
+                <div className="space-y-5">
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Core Research Question / Hypothesis
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData.research_question}
+                      onChange={(e) => setFormData({ ...formData, research_question: e.target.value })}
+                      placeholder="What primary scientific hypothesis or investigative question does this grant resolve?"
+                      className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+
+                  {/* Dynamic Milestone Objectives */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div>
+                        <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                          Project Objectives &amp; Milestones
+                        </label>
+                        <p className={`text-[11px] ${subText}`}>
+                          Rendered as ordered milestone cards on public project detail page.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, objectives: [...(formData.objectives || []), ""] })}
+                        className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" />
+                        <span>Add Milestone</span>
+                      </button>
+                    </div>
+
+                    {(!formData.objectives || formData.objectives.length === 0) ? (
+                      <div className={`p-5 rounded-2xl border border-dashed text-center ${subText} text-xs space-y-2`}>
+                        <p>No objectives configured yet.</p>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, objectives: [""] })}
+                          className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 underline"
+                        >
+                          + Add first objective
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {formData.objectives.map((obj, idx) => (
+                          <div key={idx} className="flex items-center gap-2.5">
+                            <span className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                              {String(idx + 1).padStart(2, "0")}
+                            </span>
+                            <input
+                              type="text"
+                              value={obj}
+                              onChange={(e) => {
+                                const updated = [...formData.objectives];
+                                updated[idx] = e.target.value;
+                                setFormData({ ...formData, objectives: updated });
+                              }}
+                              placeholder={`Milestone Objective ${idx + 1}...`}
+                              className={`flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = formData.objectives.filter((_, i) => i !== idx);
+                                setFormData({ ...formData, objectives: updated });
+                              }}
+                              className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
+                              title="Remove milestone"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Methodology */}
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Methodology Sequence
+                    </label>
+                    <p className={`text-[11px] ${subText} mb-2`}>
+                      Analytical workflow sequence. Use &quot;→&quot; to demarcate progressive phases.
+                    </p>
+                    <textarea
+                      rows={3}
+                      value={formData.methodology}
+                      onChange={(e) => setFormData({ ...formData, methodology: e.target.value })}
+                      placeholder="e.g. NOAA manta trawl sampling → Alkaline KOH tissue digestion → μ-FTIR spectral mapping → Toxicogenomic biomarker profiling"
+                      className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+
+                  {/* Study Area & Deliverables Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Study Area / Location Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.study_area}
+                        onChange={(e) => setFormData({ ...formData, study_area: e.target.value })}
+                        placeholder="e.g. Meghna River Estuary & Coastal Transects"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Outputs &amp; Deliverables
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.outputs}
+                        onChange={(e) => setFormData({ ...formData, outputs: e.target.value })}
+                        placeholder="e.g. 3 Peer Papers, 1 Open Spectral Library, Policy Brief"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
                   </div>
 
                   <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Study Area Detailed Description &amp; GPS Network
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData.study_area_description}
+                      onChange={(e) => setFormData({ ...formData, study_area_description: e.target.value })}
+                      placeholder="Geographic coordinates, environmental conditions, and sampling station network details..."
+                      className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. PERSONNEL & COLLABORATING PARTNERS */}
+            {(editorSection === "all" || editorSection === "people") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      03. Personnel &amp; Global Collaborators
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Lab investigators assigned to project and collaborating institutional partners.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Researcher Assignment */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                        Lab Researchers &amp; Investigators
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            researcher_assignments: [
+                              ...formData.researcher_assignments,
+                              { person_id: SEED_RESEARCHERS[0].id, role_in_project: "Researcher" },
+                            ],
+                          })
+                        }
+                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" /> Assign Person
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.researcher_assignments.map((assignment, idx) => (
+                        <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                          <select
+                            value={assignment.person_id}
+                            onChange={(e) => {
+                              const updated = [...formData.researcher_assignments];
+                              updated[idx].person_id = e.target.value;
+                              setFormData({ ...formData, researcher_assignments: updated });
+                            }}
+                            className={`w-full sm:w-1/2 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
+                          >
+                            {SEED_RESEARCHERS.map((person) => (
+                              <option key={person.id} value={person.id}>
+                                {person.name} ({person.position})
+                              </option>
+                            ))}
+                          </select>
+
+                          <input
+                            type="text"
+                            value={assignment.role_in_project}
+                            onChange={(e) => {
+                              const updated = [...formData.researcher_assignments];
+                              updated[idx].role_in_project = e.target.value;
+                              setFormData({ ...formData, researcher_assignments: updated });
+                            }}
+                            placeholder="Role (e.g. PI, Lead Analyst)"
+                            className={`w-full sm:flex-1 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = formData.researcher_assignments.filter((_, i) => i !== idx);
+                              setFormData({ ...formData, researcher_assignments: updated });
+                            }}
+                            className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Collaborating Institutions */}
+                  <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                        Collaborating Institutions &amp; Partners
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            collaborators: [
+                              ...formData.collaborators,
+                              { name: "", institution: "", role: "Collaborating Partner" },
+                            ],
+                          })
+                        }
+                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" /> Add Partner
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formData.collaborators.map((collab, idx) => (
+                        <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                          <input
+                            type="text"
+                            value={collab.name}
+                            onChange={(e) => {
+                              const updated = [...formData.collaborators];
+                              updated[idx].name = e.target.value;
+                              setFormData({ ...formData, collaborators: updated });
+                            }}
+                            placeholder="Organization Name"
+                            className={`w-full sm:w-1/3 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                          />
+                          <input
+                            type="text"
+                            value={collab.institution}
+                            onChange={(e) => {
+                              const updated = [...formData.collaborators];
+                              updated[idx].institution = e.target.value;
+                              setFormData({ ...formData, collaborators: updated });
+                            }}
+                            placeholder="Department / Division"
+                            className={`w-full sm:w-1/3 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                          />
+                          <input
+                            type="text"
+                            value={collab.role}
+                            onChange={(e) => {
+                              const updated = [...formData.collaborators];
+                              updated[idx].role = e.target.value;
+                              setFormData({ ...formData, collaborators: updated });
+                            }}
+                            placeholder="Partnership Role"
+                            className={`w-full sm:flex-1 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = formData.collaborators.filter((_, i) => i !== idx);
+                              setFormData({ ...formData, collaborators: updated });
+                            }}
+                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. RESEARCH PILLARS & THEMATIC AREAS */}
+            {(editorSection === "all" || editorSection === "areas") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <FlaskConical className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      04. Research Focus Pillars
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Check all thematic scientific areas that categorize this research.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {researchAreas.map((area) => {
+                    const isSelected = formData.research_area_ids.includes(area.id);
+                    return (
+                      <div
+                        key={area.id}
+                        onClick={() => {
+                          if (isSelected) {
+                            setFormData({
+                              ...formData,
+                              research_area_ids: formData.research_area_ids.filter((id) => id !== area.id),
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              research_area_ids: [...formData.research_area_ids, area.id],
+                            });
+                          }
+                        }}
+                        className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
+                          isSelected
+                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 shadow-sm"
+                            : isLight
+                            ? "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                            : "border-slate-800 hover:border-slate-700 bg-slate-900/40"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border ${
+                            isSelected
+                              ? "bg-emerald-600 border-emerald-600 text-white"
+                              : "border-slate-400 dark:border-slate-600"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs sm:text-sm">{area.title}</div>
+                          {area.description && (
+                            <div className={`text-[11px] ${subText} line-clamp-2 mt-1`}>
+                              {area.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 5. STATUS, TIMELINE & GRANT FUNDING */}
+            {(editorSection === "all" || editorSection === "grant") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      05. Status, Timeline &amp; Grant Funding
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Project lifecycle phase, grant agency sponsor, allocation, and award credentials.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                       Project Status
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value as ProjectStatus })}
-                      className={`w-full px-3.5 py-2.5 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
                     >
                       <option value="ongoing">● Ongoing Research</option>
                       <option value="completed">● Completed &amp; Published</option>
@@ -1041,7 +966,7 @@ export default function AdminProjectsPage() {
                   </div>
 
                   <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                       Timeline Display
                     </label>
                     <input
@@ -1049,50 +974,12 @@ export default function AdminProjectsPage() {
                       value={formData.year}
                       onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                       placeholder="e.g. 2025 — 2027"
-                      className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
-                        Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.start_date}
-                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                        className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.end_date}
-                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                        className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                      Funding Agency / Sponsor
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.funding_org}
-                      onChange={(e) => setFormData({ ...formData, funding_org: e.target.value })}
-                      placeholder="e.g. Ministry of Science & Technology (MoST)"
-                      className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      className={`w-full px-4 py-3 text-sm font-mono rounded-xl border outline-none transition ${inputBg}`}
                     />
                   </div>
 
                   <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                       Grant Amount
                     </label>
                     <input
@@ -1100,39 +987,94 @@ export default function AdminProjectsPage() {
                       value={formData.grant_amount}
                       onChange={(e) => setFormData({ ...formData, grant_amount: e.target.value })}
                       placeholder="e.g. BDT 3.6M ($32,000 USD)"
-                      className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                      className={`w-full px-4 py-3 text-sm font-mono rounded-xl border outline-none transition ${inputBg}`}
                     />
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                      Grant Reference / Info
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.start_date}
+                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.end_date}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Funding Agency / Sponsor
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.funding_org}
+                      onChange={(e) => setFormData({ ...formData, funding_org: e.target.value })}
+                      placeholder="e.g. Ministry of Science & Technology (MoST)"
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Grant Reference / Award Info
                     </label>
                     <input
                       type="text"
                       value={formData.funding_info}
                       onChange={(e) => setFormData({ ...formData, funding_info: e.target.value })}
-                      placeholder="e.g. National Grant #MoST-ENV-2024"
-                      className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      placeholder="e.g. National Grant #MoST-ENV-2024-88"
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                     />
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* 7. HERO BANNER & PROJECT GALLERY (MAX 4 IMAGES) */}
-              {(editorSection === "all" || editorSection === "media") && (
-                <div className={`p-6 rounded-3xl border space-y-6 ${cardBg}`}>
-                  {/* Hero Image Subsection */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-                      <ImageIcon className="w-4 h-4 text-emerald-500" />
-                      <h3 className={`text-sm font-bold ${headingText}`}>
-                        Primary Hero Banner Image
-                      </h3>
-                    </div>
+            {/* 6. HERO BANNER & PROJECT GALLERY (MAX 4 IMAGES) */}
+            {(editorSection === "all" || editorSection === "media") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-8 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      06. Hero Banner &amp; Project Visual Gallery
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Configure the flagship cover image and up to 4 scientific fieldwork / laboratory photos.
+                    </p>
+                  </div>
+                </div>
 
-                    {/* Preview Canvas */}
-                    <div className="w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-800 shadow-inner">
+                {/* Sub-block A: Primary Hero Banner */}
+                <div className="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#090D16] space-y-5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <h3 className={`text-sm font-bold uppercase tracking-wider ${headingText}`}>
+                      Primary Project Hero Banner
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    {/* Hero Preview Canvas */}
+                    <div className="md:col-span-5 aspect-[16/10] rounded-2xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-800 shadow-md">
                       {formData.hero_image ? (
                         <Image
                           src={formData.hero_image}
@@ -1144,137 +1086,143 @@ export default function AdminProjectsPage() {
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
                           <Upload className="w-8 h-8 opacity-50" />
-                          <span className="text-xs font-mono">No Hero Configured</span>
+                          <span className="text-xs font-mono">No Hero Banner Configured</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Supabase Storage Upload */}
-                    <div>
-                      <label className={`block text-[11px] font-mono ${subText} mb-1.5`}>
-                        Upload Hero Image to Supabase (bucket: project-media)
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageFile}
-                        disabled={uploadingImage}
-                        className={`w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
-                      />
-                      {uploadingImage && (
-                        <div className="flex items-center gap-2 text-xs text-emerald-600 mt-2 font-medium">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading hero to storage...
-                        </div>
-                      )}
-                    </div>
+                    {/* Hero Upload & Direct URL Controls */}
+                    <div className="md:col-span-7 space-y-3.5">
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                          Upload Hero Image to Storage (bucket: project-media)
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageFile}
+                          disabled={uploadingImage}
+                          className={`w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
+                        />
+                        {uploadingImage && (
+                          <div className="flex items-center gap-2 text-xs text-emerald-600 mt-1.5 font-medium">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading hero image to storage...
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Direct URL */}
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                        Or Direct Image URL
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.hero_image}
-                        onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
-                        placeholder="https://images.unsplash.com/..."
-                        className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                          Or Direct Hero Image URL
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.hero_image}
+                          onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
+                          placeholder="https://images.unsplash.com/..."
+                          className={`w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
 
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
-                        Image Alt Description (SEO)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.image_alt}
-                        onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
-                        placeholder="Descriptive accessibility label..."
-                        className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
-                      />
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                          Hero Image Accessibility Alt Text (SEO)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.image_alt}
+                          onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
+                          placeholder="Descriptive accessibility label..."
+                          className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Project Gallery Subsection (Up to 4 Images) */}
-                  <div className="space-y-4 pt-5 border-t border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Camera className="w-4 h-4 text-emerald-500" />
-                        <h3 className={`text-sm font-bold ${headingText}`}>
-                          Project Gallery (Max 4 Photos)
-                        </h3>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        {(formData.gallery || []).length} / 4 Slots
-                      </span>
+                {/* Sub-block B: Project Gallery (Max 4 Photos in a Balanced 2x2 Grid) */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-5 h-5 text-emerald-500" />
+                      <h3 className={`text-sm sm:text-base font-bold ${headingText}`}>
+                        Fieldwork &amp; Laboratory Gallery (Up to 4 Photos)
+                      </h3>
                     </div>
-                    <p className={`text-[11px] ${subText}`}>
-                      Upload or paste up to 4 project-related field sampling, laboratory, and scientific artifact photos.
-                    </p>
+                    <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {(formData.gallery || []).length} / 4 Photos Configured
+                    </span>
+                  </div>
+                  <p className={`text-xs ${subText}`}>
+                    These photos appear in the interactive 4-card research gallery on the project detail page.
+                  </p>
 
-                    {/* Gallery Cards */}
-                    <div className="space-y-3.5">
-                      {(formData.gallery || []).slice(0, 4).map((url, idx) => (
-                        <div
-                          key={idx}
-                          className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#090D16] space-y-2.5"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                              <span>Photo 0{idx + 1}</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = (formData.gallery || []).filter((_, i) => i !== idx);
-                                setFormData({ ...formData, gallery: updated });
-                              }}
-                              className="text-red-500 hover:text-red-600 p-1 hover:bg-red-500/10 rounded-lg transition text-xs font-bold flex items-center gap-1 cursor-pointer"
-                              title="Delete this photo"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> Remove
-                            </button>
-                          </div>
+                  {/* 2x2 Responsive Photo Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {(formData.gallery || []).slice(0, 4).map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#090D16] space-y-3.5 shadow-xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                            <span>Photo Slot 0{idx + 1}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (formData.gallery || []).filter((_, i) => i !== idx);
+                              setFormData({ ...formData, gallery: updated });
+                            }}
+                            className="text-red-500 hover:text-red-600 p-1.5 hover:bg-red-500/10 rounded-xl transition text-xs font-bold flex items-center gap-1 cursor-pointer"
+                            title="Remove this photo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Remove
+                          </button>
+                        </div>
 
-                          {/* Image preview thumbnail */}
+                        {/* Image preview thumbnail */}
+                        <div className="w-full aspect-[16/10] rounded-2xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-700">
                           {url ? (
-                            <div className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-700">
-                              <Image
-                                src={url}
-                                alt={`Gallery image 0${idx + 1}`}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
+                            <Image
+                              src={url}
+                              alt={`Gallery image 0${idx + 1}`}
+                              fill
+                              className="object-cover"
+                            />
                           ) : (
-                            <div className="w-full h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs">
-                              <ImageIcon className="w-5 h-5 opacity-40 mb-1" />
-                              <span>Empty image slot</span>
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs gap-1">
+                              <ImageIcon className="w-6 h-6 opacity-40" />
+                              <span>Empty photo slot</span>
                             </div>
                           )}
+                        </div>
 
-                          {/* Upload to Supabase */}
-                          <div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              disabled={uploadingGalleryIndex === idx}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleGalleryImageUpload(file, idx);
-                              }}
-                              className={`w-full text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
-                            />
-                            {uploadingGalleryIndex === idx && (
-                              <div className="flex items-center gap-1.5 text-xs text-emerald-600 mt-1 font-medium">
-                                <Loader2 className="w-3 h-3 animate-spin" /> Uploading photo 0{idx + 1}...
-                              </div>
-                            )}
-                          </div>
+                        {/* Upload to Supabase */}
+                        <div>
+                          <label className={`block text-[11px] font-mono ${subText} mb-1`}>
+                            Upload file to Supabase:
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={uploadingGalleryIndex === idx}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleGalleryImageUpload(file, idx);
+                            }}
+                            className={`w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
+                          />
+                          {uploadingGalleryIndex === idx && (
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-600 mt-1 font-medium">
+                              <Loader2 className="w-3 h-3 animate-spin" /> Uploading photo 0{idx + 1}...
+                            </div>
+                          )}
+                        </div>
 
-                          {/* Direct URL input */}
+                        {/* Direct URL input */}
+                        <div>
                           <input
                             type="url"
                             value={url}
@@ -1283,36 +1231,130 @@ export default function AdminProjectsPage() {
                               updated[idx] = e.target.value;
                               setFormData({ ...formData, gallery: updated });
                             }}
-                            placeholder="Or paste image URL (https://...)"
-                            className={`w-full px-3 py-1.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                            placeholder="Or direct image URL (https://...)"
+                            className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
                           />
                         </div>
-                      ))}
+                      </div>
+                    ))}
+                  </div>
 
-                      {/* Add Slot Button (Max 4) */}
-                      {(!formData.gallery || formData.gallery.length < 4) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const current = formData.gallery || [];
-                            if (current.length < 4) {
-                              setFormData({ ...formData, gallery: [...current, ""] });
-                            }
-                          }}
-                          className="w-full py-2.5 rounded-2xl border border-dashed border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          <PlusCircle className="w-4 h-4" />
-                          <span>Add Gallery Photo Slot ({(formData.gallery || []).length}/4)</span>
-                        </button>
-                      )}
-                    </div>
+                  {/* Add Slot Button (Max 4) */}
+                  {(!formData.gallery || formData.gallery.length < 4) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = formData.gallery || [];
+                        if (current.length < 4) {
+                          setFormData({ ...formData, gallery: [...current, ""] });
+                        }
+                      }}
+                      className="w-full py-4 rounded-3xl border-2 border-dashed border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition text-xs font-bold flex items-center justify-center gap-2 cursor-pointer mt-3"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>+ Add Gallery Photo Slot ({(formData.gallery || []).length}/4)</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 7. PUBLISHING & VISIBILITY */}
+            {(editorSection === "all" || editorSection === "visibility") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      07. Publishing &amp; Public Visibility
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Draft controls, spotlight feature on homepage, and archive sorting order.
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Public Status Toggle */}
+                  <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
+                        Public Publication Status
+                      </div>
+                      <p className={`text-[11px] ${subText} mt-1`}>
+                        {formData.is_published ? "Visible on live public portal" : "Hidden draft mode only"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, is_published: !formData.is_published })}
+                      className={`w-full py-2.5 rounded-xl text-xs font-mono font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                        formData.is_published
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-amber-600 text-white"
+                      }`}
+                    >
+                      {formData.is_published ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" /> PUBLISHED
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4" /> DRAFT ONLY
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Featured Spotlight Toggle */}
+                  <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
+                        Spotlight Feature
+                      </div>
+                      <p className={`text-[11px] ${subText} mt-1`}>
+                        Promoted on laboratory homepage
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
+                      className={`w-full py-2.5 rounded-xl text-xs font-mono font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                        formData.is_featured
+                          ? "bg-amber-500 text-slate-950 shadow-sm"
+                          : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      <Star className={`w-4 h-4 ${formData.is_featured ? "fill-slate-950" : ""}`} />
+                      <span>{formData.is_featured ? "FEATURED SPOTLIGHT" : "STANDARD PROJECT"}</span>
+                    </button>
+                  </div>
+
+                  {/* Display Order Priority */}
+                  <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-2">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                        Display Priority Index
+                      </label>
+                      <p className={`text-[11px] ${subText}`}>
+                        Lower integers (e.g. 1, 2) appear first.
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      value={formData.display_order}
+                      onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
+                      className={`w-full px-4 py-2.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Bottom Save & Cancel Bar */}
-            <div className={`lg:col-span-12 p-6 rounded-3xl border flex items-center justify-between ${cardBg}`}>
+            <div className={`p-6 rounded-3xl border flex items-center justify-between ${cardBg}`}>
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
