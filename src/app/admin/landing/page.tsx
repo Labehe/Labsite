@@ -10,6 +10,16 @@ import {
   saveLandingData,
   resetLandingData,
 } from "@/lib/landing-store";
+import { getTeamMembers } from "@/lib/team/store";
+import {
+  useGalleryItems,
+  saveGalleryItem,
+  deleteGalleryItem,
+  GalleryItem,
+  getCategoryBadgeColor
+} from "@/lib/gallery-store";
+import { getLocalPublications } from "@/lib/publications/queries";
+import { getLocalProjects } from "@/lib/projects/queries";
 import {
   Layers,
   Save,
@@ -20,6 +30,8 @@ import {
   Eye,
   RotateCcw,
   BookOpen,
+  Star,
+
   FolderGit2,
   Users,
   Newspaper,
@@ -38,6 +50,14 @@ import {
   Play,
   Check,
   Upload,
+  Plus,
+  Trash2,
+  Building2,
+  Info,
+  RefreshCw,
+  Shuffle,
+  Orbit,
+  LayoutGrid,
 } from "lucide-react";
 
 export default function AdminLandingManagerPage() {
@@ -48,6 +68,18 @@ export default function AdminLandingManagerPage() {
   const [activeTab, setActiveTab] = useState<string>("hero");
   const [activeHeroSlideIndex, setActiveHeroSlideIndex] = useState<number>(0);
   const [savedStatus, setSavedStatus] = useState<string | null>(null);
+
+  const { items: galleryItems } = useGalleryItems();
+  const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const [editingGalleryItem, setEditingGalleryItem] = useState<GalleryItem>({
+    id: "",
+    title: "",
+    category: "Field Expedition",
+    location: "",
+    date_text: "2026",
+    description: "",
+    image_url: "/images/gallery/field-sampling.jpg",
+  });
 
   useEffect(() => {
     setFormData(getStoredLandingData());
@@ -805,14 +837,18 @@ export default function AdminLandingManagerPage() {
 
             {/* 3. RESEARCH FOCUS */}
             {activeTab === "researchFocus" && (
-              <div className={`p-6 rounded-2xl border ${cardBg} space-y-5 animate-in fade-in`}>
+              <div className={`p-6 rounded-2xl border ${cardBg} space-y-6 animate-in fade-in`}>
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
                   <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
                     <BookOpen className="w-4 h-4 text-emerald-500" />
                     Research Focus Section ("What We Study")
                   </h3>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full font-semibold">
+                    Dynamic Presentation
+                  </span>
                 </div>
 
+                {/* Section Text & Labels */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-xs ${labelText} mb-1`}>Section Badge Pill</label>
@@ -858,78 +894,333 @@ export default function AdminLandingManagerPage() {
                     className={`w-full px-3.5 py-2 rounded-xl border text-xs outline-none ${inputBg}`}
                   />
                 </div>
+
+                {/* Shuffle / Randomize View Mode Controls */}
+                <div className="pt-4 border-t border-slate-100 dark:border-emerald-950/60 space-y-4">
+                  <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-[#060D1A] border border-slate-200 dark:border-slate-800">
+                    <div className="space-y-0.5 max-w-xl">
+                      <div className="flex items-center gap-2">
+                        <Shuffle className="w-4 h-4 text-emerald-500" />
+                        <span className={`text-xs font-bold ${titleText}`}>
+                          Auto-Shuffle View Mode on Page Reload / Visit
+                        </span>
+                      </div>
+                      <p className={`text-[11px] ${subText}`}>
+                        When enabled, each page visit or reload will randomly select one of the presentation modes (<strong>Pillar Deck</strong>, <strong>Orbit Map</strong>, or <strong>Grid Matrix</strong>). Visitors can still freely switch modes at any time.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          researchFocus: {
+                            ...formData.researchFocus,
+                            shuffleViewMode: formData.researchFocus.shuffleViewMode === false ? true : false,
+                          },
+                        })
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        formData.researchFocus.shuffleViewMode !== false ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          formData.researchFocus.shuffleViewMode !== false ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Fixed Default View Mode (when shuffle is disabled) */}
+                  <div className="space-y-2">
+                    <label className={`block text-xs ${labelText}`}>
+                      Fixed Default Presentation Mode {formData.researchFocus.shuffleViewMode !== false && <span className="text-[11px] font-normal text-slate-400">(Used when Shuffle is OFF)</span>}
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        {
+                          id: "deck" as const,
+                          name: "Pillar Deck",
+                          desc: "Expanding interactive monolith pillars",
+                          icon: Layers,
+                        },
+                        {
+                          id: "radial" as const,
+                          name: "Orbit Map",
+                          desc: "360° planetary radial radar network",
+                          icon: Orbit,
+                        },
+                        {
+                          id: "grid" as const,
+                          name: "Grid Matrix",
+                          desc: "Structured analytical cards grid",
+                          icon: LayoutGrid,
+                        },
+                      ].map((mode) => {
+                        const ModeIcon = mode.icon;
+                        const isSelected =
+                          (formData.researchFocus.defaultViewMode || "deck") === mode.id;
+
+                        return (
+                          <button
+                            key={mode.id}
+                            type="button"
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                researchFocus: {
+                                  ...formData.researchFocus,
+                                  defaultViewMode: mode.id,
+                                },
+                              })
+                            }
+                            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer space-y-1.5 ${
+                              isSelected
+                                ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500"
+                                : isLight
+                                ? "bg-white border-slate-200 hover:bg-slate-50"
+                                : "bg-[#090D16] border-slate-800 hover:bg-slate-800/50"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <ModeIcon
+                                  className={`w-4 h-4 ${
+                                    isSelected ? "text-emerald-500 font-bold" : "text-slate-400"
+                                  }`}
+                                />
+                                <span
+                                  className={`text-xs font-bold ${
+                                    isSelected ? "text-emerald-600 dark:text-emerald-400" : titleText
+                                  }`}
+                                >
+                                  {mode.name}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                              )}
+                            </div>
+                            <p className={`text-[11px] ${subText} leading-snug`}>
+                              {mode.desc}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
 
             {/* 4. FEATURED PROJECTS */}
             {activeTab === "projects" && (
-              <div className={`p-6 rounded-2xl border ${cardBg} space-y-5 animate-in fade-in`}>
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
-                  <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
-                    <FolderGit2 className="w-4 h-4 text-emerald-500" />
-                    Flagship Research Projects Section
-                  </h3>
-                </div>
+              <div className="space-y-6 animate-in fade-in">
+                {/* Section Header Settings */}
+                <div className={`p-6 rounded-2xl border ${cardBg} space-y-5`}>
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
+                    <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
+                      <FolderGit2 className="w-4 h-4 text-emerald-500" />
+                      Flagship Research Projects Section Headlines
+                    </h3>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-xs ${labelText} mb-1`}>Top Badge Label</label>
+                      <input
+                        type="text"
+                        value={formData.projectsSection?.badge || "FLAGSHIP RESEARCH"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            projectsSection: { ...formData.projectsSection, badge: e.target.value },
+                          })
+                        }
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs ${labelText} mb-1`}>Section Title</label>
+                      <input
+                        type="text"
+                        value={formData.projectsSection?.title || "Completed Projects & Scientific Breakthroughs"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            projectsSection: { ...formData.projectsSection, title: e.target.value },
+                          })
+                        }
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Top Badge Label</label>
-                    <input
-                      type="text"
-                      value={formData.projectsSection?.badge || "FLAGSHIP RESEARCH"}
+                    <label className={`block text-xs ${labelText} mb-1`}>Subtitle Description</label>
+                    <textarea
+                      rows={2}
+                      value={formData.projectsSection?.subtitle || "High-impact investigative projects funded by national and international scientific bodies."}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          projectsSection: { ...formData.projectsSection, badge: e.target.value },
+                          projectsSection: { ...formData.projectsSection, subtitle: e.target.value },
                         })
                       }
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
                     />
                   </div>
-                  <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Section Title</label>
-                    <input
-                      type="text"
-                      value={formData.projectsSection?.title || "Completed Projects & Scientific Breakthroughs"}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          projectsSection: { ...formData.projectsSection, title: e.target.value },
-                        })
-                      }
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
-                    />
-                  </div>
                 </div>
 
-                <div>
-                  <label className={`block text-xs ${labelText} mb-1`}>Subtitle Description</label>
-                  <textarea
-                    rows={2}
-                    value={formData.projectsSection?.subtitle || "High-impact investigative projects funded by national and international scientific bodies."}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        projectsSection: { ...formData.projectsSection, subtitle: e.target.value },
-                      })
-                    }
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
-                  />
-                </div>
+                {/* Live Projects Database Sync Banner & Top 8 Preview */}
+                {(() => {
+                  const allProjects = getLocalProjects().filter((p) => p.is_published !== false);
+                  const sortedProjects = [...allProjects].sort((a, b) => {
+                    if (a.is_featured && !b.is_featured) return -1;
+                    if (!a.is_featured && b.is_featured) return 1;
+                    const dateA = new Date(a.start_date || a.created_at).getTime();
+                    const dateB = new Date(b.start_date || b.created_at).getTime();
+                    return dateB - dateA;
+                  });
+                  const top8 = sortedProjects.slice(0, 8);
+                  const featuredCount = allProjects.filter((p) => p.is_featured).length;
+
+                  return (
+                    <div className={`p-6 rounded-2xl border ${cardBg} space-y-5`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-emerald-400" />
+                            <h4 className={`text-sm font-bold ${titleText}`}>
+                              Homepage Flagship Projects (Live Sync)
+                            </h4>
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              {top8.length} Shown on Slider (Max 8)
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-amber-400" />
+                              {featuredCount} Featured
+                            </span>
+                          </div>
+                          <p className={`text-xs ${subText} mt-1`}>
+                            The homepage automatically displays the top <strong>latest 8 projects</strong> from the Projects Database, prioritizing <strong>Featured ★</strong> projects.
+                          </p>
+                        </div>
+
+                        <Link
+                          href="/admin/projects"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition-all shrink-0"
+                        >
+                          <FolderGit2 className="w-3.5 h-3.5" />
+                          <span>Manage All Projects &rarr;</span>
+                        </Link>
+                      </div>
+
+                      {/* Top 8 Preview Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {top8.map((proj, idx) => (
+                          <div
+                            key={proj.id || idx}
+                            className="rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#070D18] overflow-hidden flex flex-col justify-between group"
+                          >
+                            <div className="relative h-28 w-full bg-slate-900 overflow-hidden">
+                              <img
+                                src={proj.hero_image || proj.featured_image || "/images/gallery/field-sampling.jpg"}
+                                alt={proj.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "/images/gallery/field-sampling.jpg";
+                                }}
+                              />
+                              <div className="absolute top-2 left-2 flex items-center gap-1">
+                                {proj.is_featured && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500 text-black text-[9px] font-bold uppercase">
+                                    ★ Featured
+                                  </span>
+                                )}
+                                <span className="px-1.5 py-0.5 rounded bg-black/70 text-emerald-400 text-[9px] font-mono font-bold">
+                                  #{idx + 1}
+                                </span>
+                              </div>
+                              <span className="absolute bottom-1.5 right-2 px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 text-[9px] font-bold uppercase border border-emerald-700/40">
+                                {proj.status || "COMPLETED"}
+                              </span>
+                            </div>
+
+                            <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
+                              <div>
+                                <span className="text-[10px] font-mono text-slate-400 block truncate">
+                                  {proj.funding_org || "National Research"} • {proj.year || "2024-2026"}
+                                </span>
+                                <h5 className={`text-xs font-bold leading-snug line-clamp-2 ${titleText} mt-0.5`}>
+                                  {proj.title}
+                                </h5>
+                              </div>
+
+                              <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="truncate max-w-[120px]">
+                                  {proj.research_areas?.[0]?.title || "Ecotoxicology"}
+                                </span>
+                                <Link
+                                  href={`/projects#${proj.slug}`}
+                                  className="text-emerald-500 hover:underline font-semibold"
+                                >
+                                  View &rarr;
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
             {/* 5. PARTNERS RIBBON */}
             {activeTab === "partners" && (
-              <div className={`p-6 rounded-2xl border ${cardBg} space-y-5 animate-in fade-in`}>
+              <div className={`p-6 rounded-2xl border ${cardBg} space-y-6 animate-in fade-in`}>
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
                   <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
                     <Globe className="w-4 h-4 text-emerald-500" />
                     Collaborating Institutions &amp; Partners Ribbon
                   </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentPartners =
+                        formData.partnersSection?.partners ||
+                        DEFAULT_LANDING_DATA.partnersSection.partners ||
+                        [];
+                      const newPartner = {
+                        id: `partner-${Date.now()}`,
+                        name: "Organization Name",
+                        shortName: "",
+                        type: "Partner Organization",
+                        badge: "PARTNER",
+                        logoUrl: "",
+                        websiteUrl: "",
+                      };
+                      setFormData({
+                        ...formData,
+                        partnersSection: {
+                          ...formData.partnersSection,
+                          partners: [...currentPartners, newPartner],
+                        },
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Organization Logo</span>
+                  </button>
                 </div>
 
+                {/* Section Header Settings */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-xs ${labelText} mb-1`}>Top Badge Label</label>
@@ -960,64 +1251,286 @@ export default function AdminLandingManagerPage() {
                     />
                   </div>
                 </div>
+
+                {/* Simple Upload Guide */}
+                <div className="flex items-center justify-between text-xs px-1 text-slate-400">
+                  <span className="font-semibold text-slate-300">
+                    Partner Logos ({((formData.partnersSection?.partners || DEFAULT_LANDING_DATA.partnersSection.partners || []).length)})
+                  </span>
+                  <span className="text-[11px] font-mono text-emerald-400">
+                    Recommended: PNG / SVG with transparent background (1:1 or 3:2)
+                  </span>
+                </div>
+
+                {/* Clean Visual Grid of Logos */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-1">
+                  {(formData.partnersSection?.partners || DEFAULT_LANDING_DATA.partnersSection.partners || []).map((partner, index) => {
+                    const currentPartners =
+                      formData.partnersSection?.partners ||
+                      DEFAULT_LANDING_DATA.partnersSection.partners ||
+                      [];
+
+                    const updatePartnerField = (field: string, value: string) => {
+                      const updated = [...currentPartners];
+                      updated[index] = { ...updated[index], [field]: value };
+                      setFormData({
+                        ...formData,
+                        partnersSection: {
+                          ...formData.partnersSection,
+                          partners: updated,
+                        },
+                      });
+                    };
+
+                    const removePartner = () => {
+                      const updated = currentPartners.filter((_, i) => i !== index);
+                      setFormData({
+                        ...formData,
+                        partnersSection: {
+                          ...formData.partnersSection,
+                          partners: updated,
+                        },
+                      });
+                    };
+
+                    return (
+                      <div
+                        key={partner.id || index}
+                        className={`p-4 rounded-2xl border ${
+                          isLight ? "bg-white border-slate-200" : "bg-[#090D16] border-slate-800"
+                        } flex flex-col gap-3 relative transition-all group`}
+                      >
+                        {/* Name & Delete Header */}
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            value={partner.name}
+                            onChange={(e) => updatePartnerField("name", e.target.value)}
+                            placeholder="Organization Name"
+                            className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-none ${inputBg}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={removePartner}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Remove Logo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Visual Upload / Preview Box */}
+                        <label className={`w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-3 relative cursor-pointer transition-all ${
+                          partner.logoUrl
+                            ? isLight ? "bg-slate-50 border-emerald-500/40" : "bg-slate-900/60 border-emerald-500/40"
+                            : isLight ? "bg-slate-50 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/20" : "bg-slate-900/40 border-slate-700 hover:border-emerald-400 hover:bg-emerald-950/20"
+                        }`}>
+                          {partner.logoUrl ? (
+                            <div className="relative w-full h-full flex items-center justify-center">
+                              <img
+                                src={partner.logoUrl}
+                                alt={partner.name || "Organization Logo"}
+                                className="max-h-full max-w-full object-contain"
+                              />
+                              <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity rounded-lg">
+                                <span className="px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-bold shadow-xs">
+                                  Change Logo
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-center gap-1.5 pointer-events-none">
+                              <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                <Upload className="w-4 h-4" />
+                              </div>
+                              <span className="text-xs font-semibold text-emerald-500">Upload Logo</span>
+                              <span className="text-[10px] text-slate-400">Click to browse image</span>
+                            </div>
+                          )}
+
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file, (dataUrl) =>
+                                  updatePartnerField("logoUrl", dataUrl)
+                                );
+                              }
+                            }}
+                          />
+                        </label>
+
+                        {/* Optional Clear / URL helper */}
+                        {partner.logoUrl && (
+                          <div className="flex items-center justify-between pt-0.5">
+                            <span className="text-[10px] text-emerald-400 font-medium">✓ Logo Added</span>
+                            <button
+                              type="button"
+                              onClick={() => updatePartnerField("logoUrl", "")}
+                              className="text-[10px] text-rose-400 hover:text-rose-500 hover:underline cursor-pointer"
+                            >
+                              Remove image
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
             {/* 6. PUBLICATIONS */}
             {activeTab === "publications" && (
-              <div className={`p-6 rounded-2xl border ${cardBg} space-y-5 animate-in fade-in`}>
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
-                  <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
-                    <FileText className="w-4 h-4 text-emerald-500" />
-                    Featured Publications Section
-                  </h3>
-                </div>
+              <div className="space-y-6 animate-in fade-in">
+                {/* Section Header Settings */}
+                <div className={`p-6 rounded-2xl border ${cardBg} space-y-5`}>
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
+                    <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
+                      <FileText className="w-4 h-4 text-emerald-500" />
+                      Featured Publications Section Headlines
+                    </h3>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-xs ${labelText} mb-1`}>Top Badge Label</label>
+                      <input
+                        type="text"
+                        value={formData.publicationsSection?.badge || "PEER-REVIEWED EVIDENCE"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            publicationsSection: { ...formData.publicationsSection, badge: e.target.value },
+                          })
+                        }
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs ${labelText} mb-1`}>Section Heading</label>
+                      <input
+                        type="text"
+                        value={formData.publicationsSection?.title || "Featured Publications"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            publicationsSection: { ...formData.publicationsSection, title: e.target.value },
+                          })
+                        }
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Top Badge Label</label>
-                    <input
-                      type="text"
-                      value={formData.publicationsSection?.badge || "PEER-REVIEWED EVIDENCE"}
+                    <label className={`block text-xs ${labelText} mb-1`}>Subtitle Description</label>
+                    <textarea
+                      rows={2}
+                      value={formData.publicationsSection?.subtitle || "Recent scientific breakthroughs published in high-impact environmental toxicology and public health journals."}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          publicationsSection: { ...formData.publicationsSection, badge: e.target.value },
+                          publicationsSection: { ...formData.publicationsSection, subtitle: e.target.value },
                         })
                       }
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
                     />
                   </div>
-                  <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Section Heading</label>
-                    <input
-                      type="text"
-                      value={formData.publicationsSection?.title || "Featured Publications"}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          publicationsSection: { ...formData.publicationsSection, title: e.target.value },
-                        })
-                      }
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
-                    />
-                  </div>
                 </div>
 
-                <div>
-                  <label className={`block text-xs ${labelText} mb-1`}>Subtitle Description</label>
-                  <textarea
-                    rows={2}
-                    value={formData.publicationsSection?.subtitle || "Recent scientific breakthroughs published in high-impact environmental toxicology and public health journals."}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        publicationsSection: { ...formData.publicationsSection, subtitle: e.target.value },
-                      })
-                    }
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
-                  />
-                </div>
+                {/* Live Database Sync Banner & Top 10 Preview */}
+                {(() => {
+                  const allPubs = getLocalPublications().filter((p) => p.is_published !== false);
+                  const sortedPubs = [...allPubs].sort((a, b) => {
+                    if (a.is_featured && !b.is_featured) return -1;
+                    if (!a.is_featured && b.is_featured) return 1;
+                    return (
+                      b.publication_year - a.publication_year ||
+                      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    );
+                  });
+                  const top10 = sortedPubs.slice(0, 10);
+                  const featuredCount = allPubs.filter((p) => p.is_featured).length;
+
+                  return (
+                    <div className={`p-6 rounded-2xl border ${cardBg} space-y-5`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-emerald-400" />
+                            <h4 className={`text-sm font-bold ${titleText}`}>
+                              Homepage Featured Publications (Live Sync)
+                            </h4>
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              {top10.length} Shown on Carousel
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-amber-400" />
+                              {featuredCount} Featured
+                            </span>
+                          </div>
+                          <p className={`text-xs ${subText} mt-1`}>
+                            The homepage automatically displays up to <strong>10 publications</strong>, prioritizing papers marked as <strong>Featured ★</strong> and newest publications.
+                          </p>
+                        </div>
+
+                        <Link
+                          href="/admin/publications"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition-all shrink-0"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Manage All Publications &rarr;</span>
+                        </Link>
+                      </div>
+
+                      {/* Top 10 Preview List */}
+                      <div className="space-y-2.5">
+                        {top10.map((pub, idx) => (
+                          <div
+                            key={pub.id || idx}
+                            className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#070D18] flex items-center justify-between gap-4"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-[11px] font-mono font-bold shrink-0">
+                                {idx + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  {pub.is_featured && (
+                                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30 text-[10px] font-bold">
+                                      <Star className="w-2.5 h-2.5 fill-amber-500" />
+                                      Featured
+                                    </span>
+                                  )}
+                                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {pub.publication_year}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400">•</span>
+                                  <span className="text-[11px] italic text-slate-500 dark:text-slate-400 truncate">
+                                    {pub.journal}
+                                  </span>
+                                </div>
+                                <h5 className={`text-xs font-bold ${titleText} truncate mt-0.5`}>
+                                  {pub.title}
+                                </h5>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <span className="text-[10px] font-mono text-slate-400 block truncate max-w-[140px]">
+                                {pub.doi ? `DOI: ${pub.doi}` : "No DOI"}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -1029,6 +1542,40 @@ export default function AdminLandingManagerPage() {
                     <Award className="w-4 h-4 text-emerald-500" />
                     Principal Investigator &amp; Director Spotlight
                   </h3>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const members = await getTeamMembers();
+                        const piMember = members.find((m) => m.category === "pi") || members[0];
+                        if (piMember) {
+                          setFormData({
+                            ...formData,
+                            piSection: {
+                              ...formData.piSection,
+                              name: piMember.name,
+                              designation: piMember.role,
+                              department: piMember.department || "Department of Environmental Sciences",
+                              institution: piMember.affiliation || "Jahangirnagar University",
+                              bioQuote: piMember.quote || piMember.bio || formData.piSection.bioQuote,
+                              imageSrc: piMember.imageSrc || formData.piSection.imageSrc,
+                              publicationsCount: piMember.publicationsCount ? `${piMember.publicationsCount}+` : formData.piSection.publicationsCount,
+                              citationsCount: piMember.citationsCount ? `${piMember.citationsCount.toLocaleString()}+` : "2,840+",
+                              hIndex: piMember.hIndex ? `${piMember.hIndex}` : "26",
+                              scholarUrl: piMember.googleScholarUrl || formData.piSection.scholarUrl,
+                            },
+                          });
+                          alert(`Successfully synchronized PI details from ${piMember.name}!`);
+                        }
+                      } catch (err) {
+                        alert("Failed to load PI from team database.");
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 text-xs font-semibold border border-emerald-500/30 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Sync from Team Database</span>
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1146,9 +1693,9 @@ export default function AdminLandingManagerPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Publications Counter Text</label>
+                    <label className={`block text-xs ${labelText} mb-1`}>Publications Counter</label>
                     <input
                       type="text"
                       value={formData.piSection.publicationsCount}
@@ -1162,14 +1709,28 @@ export default function AdminLandingManagerPage() {
                     />
                   </div>
                   <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Funded Grants Counter Text</label>
+                    <label className={`block text-xs ${labelText} mb-1`}>Citations Counter</label>
                     <input
                       type="text"
-                      value={formData.piSection.grantsCount}
+                      value={formData.piSection.citationsCount || "2,840+"}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          piSection: { ...formData.piSection, grantsCount: e.target.value },
+                          piSection: { ...formData.piSection, citationsCount: e.target.value },
+                        })
+                      }
+                      className={`w-full px-3.5 py-2 rounded-xl border text-xs outline-none ${inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs ${labelText} mb-1`}>h-Index Counter</label>
+                    <input
+                      type="text"
+                      value={formData.piSection.hIndex || "26"}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          piSection: { ...formData.piSection, hIndex: e.target.value },
                         })
                       }
                       className={`w-full px-3.5 py-2 rounded-xl border text-xs outline-none ${inputBg}`}
@@ -1181,12 +1742,18 @@ export default function AdminLandingManagerPage() {
 
             {/* 8. RESEARCHER ROSTER */}
             {activeTab === "people" && (
-              <div className={`p-6 rounded-2xl border ${cardBg} space-y-5 animate-in fade-in`}>
+              <div className={`p-6 rounded-2xl border ${cardBg} space-y-6 animate-in fade-in`}>
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
                   <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
                     <Users className="w-4 h-4 text-emerald-500" />
-                    Researcher &amp; Faculty Roster Section
+                    Researcher &amp; Faculty Roster Slideshow
                   </h3>
+                  <Link
+                    href="/admin/people"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 text-xs font-semibold border border-emerald-500/30 transition-all cursor-pointer"
+                  >
+                    <span>Manage Researchers in Team Studio &rarr;</span>
+                  </Link>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1224,7 +1791,7 @@ export default function AdminLandingManagerPage() {
                   <label className={`block text-xs ${labelText} mb-1`}>Subtitle Description</label>
                   <textarea
                     rows={2}
-                    value={formData.peopleSection?.subtitle || "The multidisciplinary faculty, doctoral scholars, and students advancing environmental health science."}
+                    value={formData.peopleSection?.subtitle || "The multidisciplinary faculty, doctoral scholars, graduate students, and fellows advancing environmental ecotoxicology research at Jahangirnagar University."}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -1233,6 +1800,71 @@ export default function AdminLandingManagerPage() {
                     }
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <label className={`block text-xs ${labelText} mb-1`}>Slideshow Auto-Advance Speed (Seconds)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="1.5"
+                      max="15"
+                      value={formData.peopleSection?.autoSlideSeconds ?? 3.5}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          peopleSection: {
+                            ...formData.peopleSection,
+                            autoSlideSeconds: parseFloat(e.target.value) || 3.5,
+                          },
+                        })
+                      }
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
+                    />
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Controls the interval (e.g. 3.5s) for smooth automatic sliding.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs ${labelText} mb-1`}>Random Member Shuffle</label>
+                    <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                      isLight ? "bg-slate-50 border-slate-200" : "bg-slate-900 border-slate-700"
+                    }`}>
+                      <div className="text-xs">
+                        <span className="font-semibold block text-slate-200">Shuffle on Page Load</span>
+                        <span className="text-[10px] text-slate-400">Randomizes order so different members get highlighted.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={formData.peopleSection?.enableShuffle !== false}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            peopleSection: {
+                              ...formData.peopleSection,
+                              enableShuffle: e.target.checked,
+                            },
+                          })
+                        }
+                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Sync Information Box */}
+                <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+                  isLight ? "bg-emerald-50/70 border-emerald-200 text-emerald-900" : "bg-emerald-950/20 border-emerald-900/40 text-emerald-200"
+                }`}>
+                  <Info className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold">Automatic Team Sync &amp; Member Filtering</p>
+                    <p className={`text-[11px] leading-relaxed ${isLight ? "text-emerald-800" : "text-emerald-300/80"}`}>
+                      This slideshow displays all <strong>active current lab researchers</strong> directly from the Team Database. The <strong>Principal Investigator</strong> (featured in Spotlight above) and <strong>Alumni</strong> are automatically excluded. Any edits made in <Link href="/admin/people" className="underline font-bold text-emerald-400">Admin &rarr; People</Link> update this slideshow immediately.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1354,59 +1986,350 @@ export default function AdminLandingManagerPage() {
 
             {/* 11. FIELD GALLERY */}
             {activeTab === "gallery" && (
-              <div className={`p-6 rounded-2xl border ${cardBg} space-y-5 animate-in fade-in`}>
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
-                  <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
-                    <ImageIcon className="w-4 h-4 text-emerald-500" />
-                    Event Showcase &amp; Field Gallery Section
-                  </h3>
-                </div>
+              <div className="space-y-6 animate-in fade-in">
+                {/* Section Header Settings */}
+                <div className={`p-6 rounded-2xl border ${cardBg} space-y-5`}>
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-emerald-950/60">
+                    <h3 className={`text-sm font-bold flex items-center gap-2 ${titleText}`}>
+                      <ImageIcon className="w-4 h-4 text-emerald-500" />
+                      Event Showcase &amp; Field Gallery Section Headlines
+                    </h3>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-xs ${labelText} mb-1`}>Top Badge Label</label>
+                      <input
+                        type="text"
+                        value={formData.gallerySection?.badge || "VISUAL ARCHIVE"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            gallerySection: { ...formData.gallerySection, badge: e.target.value },
+                          })
+                        }
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs ${labelText} mb-1`}>Section Heading</label>
+                      <input
+                        type="text"
+                        value={formData.gallerySection?.title || "Event Showcase & Field Gallery"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            gallerySection: { ...formData.gallerySection, title: e.target.value },
+                          })
+                        }
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Top Badge Label</label>
-                    <input
-                      type="text"
-                      value={formData.gallerySection?.badge || "VISUAL ARCHIVE"}
+                    <label className={`block text-xs ${labelText} mb-1`}>Subtitle Description</label>
+                    <textarea
+                      rows={2}
+                      value={formData.gallerySection?.subtitle || "A continuous glimpse into our river delta expeditions, spectroscopic instrument rooms, and international symposia."}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          gallerySection: { ...formData.gallerySection, badge: e.target.value },
+                          gallerySection: { ...formData.gallerySection, subtitle: e.target.value },
                         })
                       }
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
                     />
                   </div>
-                  <div>
-                    <label className={`block text-xs ${labelText} mb-1`}>Section Heading</label>
-                    <input
-                      type="text"
-                      value={formData.gallerySection?.title || "Event Showcase & Field Gallery"}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          gallerySection: { ...formData.gallerySection, title: e.target.value },
-                        })
-                      }
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
-                    />
+                </div>
+
+                {/* Live Gallery Assets Sync Manager */}
+                <div className={`p-6 rounded-2xl border ${cardBg} space-y-5`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        <h4 className={`text-sm font-bold ${titleText}`}>
+                          Homepage Marquee Photos &amp; Media Assets
+                        </h4>
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          {galleryItems.length} Synced Photos
+                        </span>
+                      </div>
+                      <p className={`text-xs ${subText} mt-1`}>
+                        These photos continuously slide across the homepage marquee and open detailed lightbox modals when clicked.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="/admin/media"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-600 dark:text-slate-300 font-semibold text-xs transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Media Library</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingGalleryItem({
+                            id: "",
+                            title: "",
+                            category: "Field Expedition",
+                            location: "",
+                            date_text: "2026",
+                            description: "",
+                            image_url: "/images/gallery/field-sampling.jpg",
+                          });
+                          setGalleryModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add Photo</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Photo Cards Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {galleryItems.map((item) => {
+                      const badgeStyle = getCategoryBadgeColor(item.category);
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070D18] overflow-hidden flex flex-col justify-between group hover:border-emerald-500/40 transition-colors"
+                        >
+                          <div className="relative h-36 w-full bg-slate-900 overflow-hidden">
+                            <img
+                              src={item.image_url}
+                              alt={item.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/images/gallery/field-sampling.jpg";
+                              }}
+                            />
+                            <span className={`absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow ${badgeStyle}`}>
+                              {item.category}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">
+                            <div>
+                              <h5 className={`text-xs font-bold leading-snug line-clamp-2 ${titleText}`}>
+                                {item.title}
+                              </h5>
+                              {(item.location || item.date_text) && (
+                                <p className={`text-[11px] ${subText} mt-1 flex items-center gap-1`}>
+                                  {item.location && <span>{item.location}</span>}
+                                  {item.location && item.date_text && <span>•</span>}
+                                  {item.date_text && <span>{item.date_text}</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingGalleryItem({ ...item });
+                                  setGalleryModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-500 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                title="Edit Photo"
+                              >
+                                <Sliders className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (confirm("Delete this photo from the homepage gallery marquee?")) {
+                                    await deleteGalleryItem(item.id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                                title="Delete Photo"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div>
-                  <label className={`block text-xs ${labelText} mb-1`}>Subtitle Description</label>
-                  <textarea
-                    rows={2}
-                    value={formData.gallerySection?.subtitle || "A continuous glimpse into our river delta expeditions, spectroscopic instrument rooms, and international symposia."}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        gallerySection: { ...formData.gallerySection, subtitle: e.target.value },
-                      })
-                    }
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
-                  />
-                </div>
+                {/* Inline Gallery Photo Modal */}
+                {galleryModalOpen && editingGalleryItem && (
+                  <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className={`w-full max-w-lg p-6 rounded-3xl border ${cardBg} shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto`}>
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                        <h4 className={`text-base font-bold ${titleText}`}>
+                          {editingGalleryItem.id ? "Edit Gallery Photo" : "Add Photo to Field Gallery"}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setGalleryModalOpen(false)}
+                          className="text-slate-400 hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (!editingGalleryItem.title || !editingGalleryItem.image_url) {
+                            alert("Please provide both Title and Image URL.");
+                            return;
+                          }
+                          await saveGalleryItem({
+                            id: editingGalleryItem.id || undefined,
+                            title: editingGalleryItem.title,
+                            category: editingGalleryItem.category,
+                            location: editingGalleryItem.location,
+                            date_text: editingGalleryItem.date_text,
+                            description: editingGalleryItem.description,
+                            image_url: editingGalleryItem.image_url,
+                          });
+                          setGalleryModalOpen(false);
+                        }}
+                        className="space-y-4 text-xs"
+                      >
+                        <div>
+                          <label className={`block font-semibold mb-1 ${subText}`}>Title / Caption *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editingGalleryItem.title}
+                            onChange={(e) =>
+                              setEditingGalleryItem({ ...editingGalleryItem, title: e.target.value })
+                            }
+                            className={`w-full px-3.5 py-2 rounded-xl border outline-none ${inputBg}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={`block font-semibold mb-1 ${subText}`}>Image File / URL *</label>
+                          <div className="flex items-center gap-2 mb-2">
+                            <label className="px-3 py-1.5 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 font-semibold cursor-pointer text-xs flex items-center gap-1.5">
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Upload from Disk</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleImageUpload(file, (url) => {
+                                      setEditingGalleryItem({ ...editingGalleryItem, image_url: url });
+                                    });
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            placeholder="https://... or /images/gallery/..."
+                            value={editingGalleryItem.image_url}
+                            onChange={(e) =>
+                              setEditingGalleryItem({ ...editingGalleryItem, image_url: e.target.value })
+                            }
+                            className={`w-full px-3.5 py-2 rounded-xl border outline-none font-mono text-[11px] ${inputBg}`}
+                          />
+                          {editingGalleryItem.image_url && (
+                            <div className="mt-2 relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                              <img
+                                src={editingGalleryItem.image_url}
+                                alt="Preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block font-semibold mb-1 ${subText}`}>Category</label>
+                            <select
+                              value={editingGalleryItem.category}
+                              onChange={(e) =>
+                                setEditingGalleryItem({ ...editingGalleryItem, category: e.target.value })
+                              }
+                              className={`w-full px-3.5 py-2 rounded-xl border outline-none ${inputBg}`}
+                            >
+                              <option value="Field Expedition">Field Expedition</option>
+                              <option value="Laboratory Analysis">Laboratory Analysis</option>
+                              <option value="Microscopy & Imaging">Microscopy &amp; Imaging</option>
+                              <option value="Symposium & Seminar">Symposium &amp; Seminar</option>
+                              <option value="Community & Outreach">Community &amp; Outreach</option>
+                              <option value="Campus & Facilities">Campus &amp; Facilities</option>
+                              <option value="Award & Honors">Award &amp; Honors</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className={`block font-semibold mb-1 ${subText}`}>Location</label>
+                            <input
+                              type="text"
+                              value={editingGalleryItem.location || ""}
+                              onChange={(e) =>
+                                setEditingGalleryItem({ ...editingGalleryItem, location: e.target.value })
+                              }
+                              placeholder="e.g. Meghna Estuary"
+                              className={`w-full px-3.5 py-2 rounded-xl border outline-none ${inputBg}`}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className={`block font-semibold mb-1 ${subText}`}>Date / Period</label>
+                          <input
+                            type="text"
+                            value={editingGalleryItem.date_text || ""}
+                            onChange={(e) =>
+                              setEditingGalleryItem({ ...editingGalleryItem, date_text: e.target.value })
+                            }
+                            placeholder="e.g. March 2026"
+                            className={`w-full px-3.5 py-2 rounded-xl border outline-none ${inputBg}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={`block font-semibold mb-1 ${subText}`}>Description Details</label>
+                          <textarea
+                            rows={2}
+                            value={editingGalleryItem.description || ""}
+                            onChange={(e) =>
+                              setEditingGalleryItem({ ...editingGalleryItem, description: e.target.value })
+                            }
+                            className={`w-full px-3.5 py-2 rounded-xl border outline-none ${inputBg}`}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => setGalleryModalOpen(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-600/20 cursor-pointer"
+                          >
+                            Save Photo
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1551,7 +2474,7 @@ export default function AdminLandingManagerPage() {
                   <label className={`block text-xs ${labelText} mb-1`}>Official Laboratory Name</label>
                   <input
                     type="text"
-                    value={formData.footer?.labName || "Environmental Health & Ecotoxicology Laboratory"}
+                    value={formData.footer?.labName || "Laboratory of Environmental Health and Ecotoxicology (LabEHE)"}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -1581,7 +2504,7 @@ export default function AdminLandingManagerPage() {
                   <label className={`block text-xs ${labelText} mb-1`}>Copyright Notice</label>
                   <input
                     type="text"
-                    value={formData.footer?.copyrightText || "© 2026 Environmental Health & Ecotoxicology Laboratory. Jahangirnagar University. All rights reserved."}
+                    value={formData.footer?.copyrightText || "© 2026 Laboratory of Environmental Health and Ecotoxicology (LabEHE). Jahangirnagar University. All rights reserved."}
                     onChange={(e) =>
                       setFormData({
                         ...formData,

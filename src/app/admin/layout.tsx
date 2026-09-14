@@ -97,19 +97,18 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
     {
       title: "CONTENT",
       items: [
+        { name: "About Page", href: "/admin/about", icon: ShieldCheck },
         { name: "Research", href: "/admin/research", icon: FlaskConical },
         { name: "Projects", href: "/admin/projects", icon: FolderGit2 },
         { name: "Publications", href: "/admin/publications", icon: BookOpen },
         { name: "People", href: "/admin/people", icon: Users },
         { name: "News & Insights", href: "/admin/news", icon: Newspaper },
-        { name: "Opportunities", href: "/admin/opportunities", icon: Briefcase },
       ]
     },
     {
       title: "INBOX",
       items: [
-        { name: "Applications", href: "/admin/inbox", icon: Inbox, badge: "5" },
-        { name: "Messages", href: "/admin/inbox", icon: Inbox, badge: "3" },
+        { name: "Inquiries & Inbox", href: "/admin/inbox", icon: Inbox },
       ]
     },
     {
@@ -122,7 +121,7 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
       title: "SYSTEM",
       items: [
         { name: "Website", href: "/admin/landing", icon: Layers },
-        { name: "Activity Log", href: "/admin", icon: Clock },
+        { name: "Activity Log", href: "/admin/activity", icon: Clock },
         { name: "Settings", href: "/admin/settings", icon: Settings },
       ]
     }
@@ -142,16 +141,16 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
           isLight ? "border-slate-100" : "border-slate-800/80"
         }`}>
           <Link href="/admin" className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
-              <FlaskConical className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#14532D] to-[#10B981] text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+              <FlaskConical className="w-5 h-5 text-white stroke-[2.2]" />
             </div>
             {!isCollapsed && (
               <div className="flex flex-col min-w-0">
                 <span className={`font-bold text-xs leading-tight line-clamp-2 ${isLight ? "text-slate-900" : "text-white"}`}>
-                  Environmental Health &amp; Ecotoxicology Laboratory
+                  Laboratory of Environmental Health and Ecotoxicology
                 </span>
                 <span className={`text-[10px] ${isLight ? "text-slate-400" : "text-slate-400"} font-medium tracking-wide mt-0.5`}>
-                  Jahangirnagar University
+                  LabEHE • Jahangirnagar University
                 </span>
               </div>
             )}
@@ -331,11 +330,14 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
             } shadow-2xl animate-in slide-in-from-left`}>
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
-                      JU
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#14532D] to-[#10B981] text-white flex items-center justify-center font-bold text-[10px] shadow-sm">
+                      <FlaskConical className="w-4 h-4 text-white stroke-[2.2]" />
                     </div>
-                    <span className="font-bold text-xs">EcoTox Admin</span>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs">LabEHE Admin</span>
+                      <span className="text-[10px] text-slate-400">Jahangirnagar Univ</span>
+                    </div>
                   </div>
                   <button onClick={() => setMobileMenuOpen(false)} className="p-1 text-slate-400">
                     <X className="w-5 h-5" />

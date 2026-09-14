@@ -22,15 +22,15 @@ export function Footer() {
           {/* Left 2 Cols: Brand & Mission */}
           <div className="lg:col-span-2 space-y-4 text-left">
             <Link href="/" className="flex items-center gap-3.5 group w-fit">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#14532D] to-[#10B981] flex items-center justify-center font-bold shadow-md group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#14532D] to-[#10B981] flex items-center justify-center font-bold shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform shrink-0">
                 <FlaskConical className="w-5 h-5 text-white stroke-[2.2]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-[15px] sm:text-base tracking-tight text-white leading-tight">
-                  {landingData.footer?.labName || "Environmental Health & Ecotoxicology Laboratory"}
+                  {landingData.footer?.labName || "Laboratory of Environmental Health and Ecotoxicology (LabEHE)"}
                 </span>
                 <span className="text-xs text-[#34D399] font-semibold mt-0.5">
-                  Division of Environmental Sciences
+                  Department of Environmental Sciences
                 </span>
               </div>
             </Link>

@@ -58,7 +58,7 @@ function LoginForm() {
           Lab Administration
         </h1>
         <p className="text-xs text-slate-400 mt-1.5 max-w-xs">
-          Environmental Health &amp; Ecotoxicology Laboratory, Jahangirnagar University
+          Laboratory of Environmental Health and Ecotoxicology (LabEHE), Jahangirnagar University
         </p>
       </div>
 

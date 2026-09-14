@@ -142,10 +142,10 @@ export function PIShowcase({ pi }: PIShowcaseProps) {
 
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-center shadow-xs hover:border-emerald-500/40 transition-colors">
                   <span className="block text-xl font-black text-emerald-600 dark:text-emerald-400 font-[family-name:var(--font-manrope)]">
-                    {pi.grantsCount || 16}
+                    {pi.hIndex || 26}
                   </span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                    Grants Funded
+                    h-Index
                   </span>
                 </div>
               </div>

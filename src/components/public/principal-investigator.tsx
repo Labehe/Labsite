@@ -11,12 +11,54 @@ import {
   GraduationCap,
   Quote,
   CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import { useLandingData } from "@/lib/landing-store";
+import { getTeamMembers } from "@/lib/team/store";
+import { TeamMember } from "@/lib/team/types";
 
 export function PrincipalInvestigator() {
   const landingData = useLandingData();
-  const pi = landingData.piSection;
+  const [teamPI, setTeamPI] = React.useState<TeamMember | null>(null);
+
+  React.useEffect(() => {
+    async function loadPI() {
+      try {
+        const members = await getTeamMembers();
+        const found = members.find((m) => m.category === "pi" && m.isActive !== false) || members.find((m) => m.category === "pi") || members[0];
+        if (found) {
+          setTeamPI(found);
+        }
+      } catch (err) {
+        console.error("Failed to load PI from team store:", err);
+      }
+    }
+    loadPI();
+  }, []);
+
+  // Use team database PI data, falling back to landing store customizations
+  const piName = teamPI?.name || landingData.piSection?.name || "Dr. Mohammad S. Kabir";
+  const piRole = teamPI?.role || landingData.piSection?.designation || "Professor & Principal Investigator";
+  const piDepartment = teamPI?.department || landingData.piSection?.department || "Department of Environmental Sciences";
+  const piAffiliation = teamPI?.affiliation || landingData.piSection?.institution || "Jahangirnagar University";
+  const piImage = teamPI?.imageSrc || landingData.piSection?.imageSrc || "/images/hero-scientist.jpg";
+  const piQuote = teamPI?.quote || teamPI?.bio || landingData.piSection?.bioQuote || "Our mission is to unravel the intricate mechanisms of environmental contaminants and translate rigorous experimental toxicology into actionable ecological conservation and community health protection.";
+  
+  const publicationsText = teamPI?.publicationsCount ? `${teamPI.publicationsCount}+` : landingData.piSection?.publicationsCount || "74+";
+  const citationsText = teamPI?.citationsCount ? `${teamPI.citationsCount.toLocaleString()}+` : "2,840+";
+  const hIndexText = teamPI?.hIndex ? `${teamPI.hIndex}` : "26";
+  const scholarUrl = teamPI?.googleScholarUrl || landingData.piSection?.scholarUrl;
+  const emailAddress = teamPI?.email || "msk@juniv.edu";
+
+  // Dynamic research highlights from PI's research interests
+  const highlights = teamPI?.researchInterests && teamPI.researchInterests.length > 0
+    ? teamPI.researchInterests.slice(0, 4)
+    : [
+        "Aquatic Ecotoxicology & Persistent Contaminants (POPs/PFAS)",
+        "Microplastic-Contaminant Interactions & Bioaccumulation",
+        "High-Resolution Environmental Mass Spectrometry",
+        "Evidence-based National Water & Ecosystem Health Policy",
+      ];
 
   return (
     <section className="py-20 lg:py-28 bg-white dark:bg-[#090D16] border-t border-slate-200/90 dark:border-slate-800 transition-colors duration-300 relative overflow-hidden">
@@ -36,27 +78,30 @@ export function PrincipalInvestigator() {
           <div className="lg:col-span-5 flex flex-col items-center">
             <div className="relative w-full max-w-[420px] aspect-[4/4.6] rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 ring-1 ring-emerald-500/20 group">
               <img
-                src={pi?.imageSrc || "/images/hero-scientist.jpg"}
-                alt={pi?.name || "Principal Investigator"}
+                src={piImage}
+                alt={piName}
                 className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700 filter brightness-[0.97]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
               {/* Floating Top Credential Badge */}
               <div className="absolute top-4 left-4 z-10">
-                <span className="px-3.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-white text-xs font-semibold border border-white/20 shadow flex items-center gap-1.5">
+                <span className="px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md text-white text-xs font-semibold border border-emerald-500/30 shadow flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-                  <span>Lab Director</span>
+                  <span>Lab Director &amp; PI</span>
                 </span>
               </div>
 
               {/* Bottom Image Caption */}
               <div className="absolute bottom-4 left-4 right-4 text-white z-10 space-y-1">
-                <h3 className="text-xl font-bold tracking-tight font-[family-name:var(--font-manrope)]">
-                  {pi?.name || "Dr. Mohammad S. Kabir"}
+                <h3 className="text-xl sm:text-2xl font-bold tracking-tight font-[family-name:var(--font-manrope)]">
+                  {piName}
                 </h3>
-                <p className="text-xs text-emerald-300 font-medium">
-                  {pi?.designation || "Professor & Principal Investigator"}
+                <p className="text-xs sm:text-sm text-emerald-300 font-medium">
+                  {piRole}
+                </p>
+                <p className="text-[11px] text-slate-300">
+                  {piDepartment}, {piAffiliation}
                 </p>
               </div>
             </div>
@@ -65,19 +110,21 @@ export function PrincipalInvestigator() {
             <div className="grid grid-cols-3 gap-3 w-full max-w-[420px] mt-4">
               <div className="p-3.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 text-center shadow-xs">
                 <span className="block text-lg font-bold text-[#14532D] dark:text-[#34D399] font-[family-name:var(--font-manrope)]">
-                  {pi?.publicationsCount || "68+ Papers"}
+                  {publicationsText}
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Publications</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Peer Papers</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 text-center shadow-xs">
                 <span className="block text-lg font-bold text-[#14532D] dark:text-[#34D399] font-[family-name:var(--font-manrope)]">
-                  {pi?.grantsCount || "14 Grants"}
+                  {citationsText}
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Funded Grants</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Citations</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 text-center shadow-xs">
-                <span className="block text-lg font-bold text-[#14532D] dark:text-[#34D399] font-[family-name:var(--font-manrope)]">JU</span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Campus Lab</span>
+                <span className="block text-lg font-bold text-[#14532D] dark:text-[#34D399] font-[family-name:var(--font-manrope)]">
+                  {hIndexText}
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">h-Index</span>
               </div>
             </div>
           </div>
@@ -88,8 +135,7 @@ export function PrincipalInvestigator() {
               <div className="flex items-center gap-2 text-xs font-semibold text-[#059669] dark:text-[#34D399] uppercase tracking-wider">
                 <GraduationCap className="w-4 h-4" />
                 <span>
-                  {pi?.department || "Department of Environmental Sciences"},{" "}
-                  {pi?.institution || "Jahangirnagar University"}
+                  {piDepartment}, {piAffiliation}
                 </span>
               </div>
 
@@ -102,18 +148,13 @@ export function PrincipalInvestigator() {
             <div className="relative p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#0F172A] border-l-4 border-[#10B981] border-y border-r border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
               <Quote className="w-6 h-6 text-[#10B981] opacity-70" />
               <p className="text-sm sm:text-base text-slate-700 dark:text-slate-200 leading-relaxed italic font-normal font-[family-name:var(--font-inter)]">
-                &ldquo;{pi?.bioQuote || "Our mission is to unravel the intricate mechanisms of environmental contaminants and translate rigorous experimental toxicology into actionable ecological conservation and community health protection."}&rdquo;
+                &ldquo;{piQuote}&rdquo;
               </p>
             </div>
 
             {/* Academic Highlights */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-              {[
-                "Department of Environmental Sciences, Jahangirnagar University",
-                "Advanced Molecular & Aquatic Ecotoxicology Research",
-                "High-Resolution Environmental Spectrometry & Bioassays",
-                "Evidence-based National Water & Ecosystem Policy Advisor",
-              ].map((item, idx) => (
+              {highlights.map((item, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-xs sm:text-[13px] text-slate-700 dark:text-slate-200 font-[family-name:var(--font-inter)]">
                   <CheckCircle2 className="w-4 h-4 text-[#10B981] mt-0.5 flex-shrink-0" />
                   <span className="font-medium">{item}</span>
@@ -131,9 +172,9 @@ export function PrincipalInvestigator() {
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </Link>
 
-              {pi?.scholarUrl && (
+              {scholarUrl && (
                 <a
-                  href={pi.scholarUrl}
+                  href={scholarUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-4.5 py-3 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0F172A] text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-[#10B981] transition-colors"

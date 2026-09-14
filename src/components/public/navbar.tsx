@@ -27,61 +27,74 @@ export function Navbar() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
+  const isHomePage = pathname === "/";
+  const isSolidNav = isScrolled || !isHomePage;
+
   return (
     <>
       <header
         className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
-          isScrolled
-            ? "bg-white/95 dark:bg-[#090D16]/95 border-b border-slate-200/80 dark:border-slate-800/80 shadow-lg backdrop-blur-xl py-3"
-            : "bg-transparent border-b border-white/10 py-4 sm:py-5"
+          isSolidNav
+            ? "bg-white/95 dark:bg-black/20 dark:backdrop-blur-md border-b border-slate-200/90 dark:border-white/10 shadow-xs dark:shadow-none py-3"
+            : "bg-gradient-to-b from-black/80 via-black/40 to-transparent dark:bg-transparent border-b border-white/10 backdrop-blur-[2px] dark:backdrop-blur-none py-4 sm:py-5"
         }`}
       >
         <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12">
           <div className="flex items-center justify-between gap-4">
             {/* Left: Lab Brand Logo & Academic Identity */}
             <Link href="/" className="flex items-center gap-3.5 group flex-shrink-0">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#14532D] to-[#10B981] flex items-center justify-center shadow-md shadow-emerald-950/20 group-hover:scale-105 transition-transform duration-200">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#14532D] to-[#10B981] flex items-center justify-center font-bold shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
                 <FlaskConical className="w-5 h-5 text-white stroke-[2.2]" />
               </div>
               <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`font-extrabold text-[13.5px] sm:text-[14.5px] leading-tight tracking-tight transition-colors ${
+                      isSolidNav
+                        ? "text-slate-900 dark:text-white"
+                        : "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]"
+                    }`}
+                  >
+                    Laboratory of Environmental Health and Ecotoxicology
+                  </span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wider hidden md:inline-block border transition-colors ${
+                      isSolidNav
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-300/80 dark:border-emerald-500/30"
+                        : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    }`}
+                  >
+                    LabEHE
+                  </span>
+                </div>
                 <span
-                  className={`font-bold text-[14px] sm:text-[15px] leading-tight tracking-tight transition-colors ${
-                    isScrolled
-                      ? "text-slate-900 dark:text-white"
-                      : "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]"
-                  }`}
-                >
-                  Environmental Health &amp; <br className="hidden sm:inline" />
-                  Ecotoxicology Laboratory
-                </span>
-                <span
-                  className={`text-[10.5px] font-semibold mt-0.5 transition-colors ${
-                    isScrolled
-                      ? "text-emerald-700 dark:text-[#34D399]"
+                  className={`text-[10px] sm:text-[10.5px] font-semibold mt-0.5 transition-colors ${
+                    isSolidNav
+                      ? "text-emerald-700 dark:text-emerald-300"
                       : "text-emerald-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
                   }`}
                 >
-                  Division of Environmental Sciences
+                  Department of Environmental Sciences • Jahangirnagar University
                 </span>
               </div>
             </Link>
 
             {/* Center: Enhanced Navigation Links */}
-            <nav className="hidden xl:flex items-center gap-2">
+            <nav className="hidden xl:flex items-center gap-1.5">
               {PUBLIC_NAV_ITEMS.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-3 py-1.5 rounded-lg text-[13px] font-medium tracking-tight transition-all duration-200 ${
+                    className={`px-3 py-1.5 rounded-xl text-[13px] tracking-tight transition-all duration-200 ${
                       isActive
-                        ? isScrolled
-                          ? "bg-[#E8F5EE] dark:bg-emerald-950/60 text-[#14532D] dark:text-[#34D399] font-bold shadow-xs"
+                        ? isSolidNav
+                          ? "bg-emerald-100/90 text-[#14532D] dark:bg-emerald-500/20 dark:text-[#34D399] dark:border-emerald-500/30 font-bold shadow-xs border border-emerald-300/70"
                           : "bg-white/20 backdrop-blur-md text-[#34D399] border border-white/25 font-bold shadow-sm"
-                        : isScrolled
-                        ? "text-slate-600 dark:text-slate-300 hover:text-[#14532D] dark:hover:text-white hover:bg-[#F0FDF4] dark:hover:bg-slate-800/60"
-                        : "text-white/85 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+                        : isSolidNav
+                        ? "text-slate-700 dark:text-white/85 hover:text-[#14532D] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 font-semibold dark:font-medium"
+                        : "text-white/90 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-medium"
                     }`}
                   >
                     {item.label}
@@ -97,8 +110,8 @@ export function Navbar() {
                 aria-label="Search laboratory content"
                 title="Search website"
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 border ${
-                  isScrolled
-                    ? "border-slate-200 dark:border-slate-700 bg-slate-100/90 dark:bg-slate-800/90 text-slate-600 hover:text-[#14532D] dark:text-slate-300 dark:hover:text-[#34D399] hover:bg-emerald-50"
+                  isSolidNav
+                    ? "border-slate-200 dark:border-transparent bg-slate-100 dark:bg-transparent text-slate-700 hover:text-[#14532D] dark:text-white/90 dark:hover:text-white hover:bg-emerald-50 dark:hover:bg-white/10"
                     : "border-transparent text-white/90 hover:text-white hover:bg-white/10"
                 }`}
               >
@@ -107,8 +120,8 @@ export function Navbar() {
 
               <ThemeToggle
                 className={
-                  isScrolled
-                    ? ""
+                  isSolidNav
+                    ? "dark:border-transparent dark:bg-transparent dark:text-white dark:hover:bg-white/10 dark:shadow-none"
                     : "border-transparent bg-transparent text-white hover:bg-white/10 shadow-none"
                 }
               />
@@ -116,9 +129,9 @@ export function Navbar() {
               <Link
                 href="/contact"
                 className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all active:scale-95 border ${
-                  isScrolled
-                    ? "bg-[#14532D] hover:bg-[#166534] text-white border-transparent shadow-emerald-900/20"
-                    : "bg-white/10 hover:bg-white/20 border-white/35 text-white backdrop-blur-md"
+                  isSolidNav
+                    ? "bg-[#14532D] hover:bg-[#166534] text-white border-transparent shadow-md shadow-emerald-900/15 dark:bg-[#10B981] dark:hover:bg-[#34D399] dark:text-[#04150C] dark:font-bold dark:shadow-md dark:shadow-emerald-500/20"
+                    : "bg-[#10B981] hover:bg-[#34D399] text-[#04150C] border-transparent font-bold shadow-md shadow-emerald-500/20"
                 }`}
               >
                 <span>Connect With Us</span>
@@ -129,7 +142,7 @@ export function Navbar() {
             <div className="flex md:hidden items-center gap-2">
               <ThemeToggle
                 className={
-                  isScrolled
+                  isSolidNav
                     ? ""
                     : "border-white/25 bg-black/20 backdrop-blur-md text-white hover:bg-white/20 shadow-sm"
                 }
@@ -138,8 +151,8 @@ export function Navbar() {
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="Toggle Navigation Menu"
                 className={`p-2.5 rounded-xl border transition-colors ${
-                  isScrolled
-                    ? "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white hover:bg-emerald-50"
+                  isSolidNav
+                    ? "border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-800/60 hover:bg-emerald-50"
                     : "border-white/25 bg-black/20 backdrop-blur-md text-white hover:bg-white/20 shadow-sm"
                 }`}
               >
@@ -158,17 +171,12 @@ export function Navbar() {
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#052E16] via-[#14532D] to-[#10B981] p-0.5 shadow-md">
-                    <div className="w-full h-full rounded-[10px] bg-[#090D16] flex items-center justify-center">
-                      <svg className="w-4 h-4 text-[#34D399]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="3" fill="#10B981" fillOpacity="0.3" stroke="#34D399" strokeWidth="2" />
-                        <path d="M12 8c2.5 0 4.5 1.5 4.5 4s-2 4-4.5 4c-1.8 0-3.3-.8-4-2" stroke="#6EE7B7" strokeWidth="1.8" />
-                      </svg>
-                    </div>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#14532D] to-[#10B981] flex items-center justify-center font-bold shadow-md shadow-emerald-500/20 shrink-0">
+                    <FlaskConical className="w-5 h-5 text-white stroke-[2.2]" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">Ecotox Lab</span>
-                    <span className="text-[10px] font-mono-scientific text-emerald-600 dark:text-[#34D399] uppercase tracking-wider">Research Division</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">LabEHE</span>
+                    <span className="text-[10px] font-mono-scientific text-emerald-600 dark:text-[#34D399] uppercase tracking-wider">Environmental Health Lab</span>
                   </div>
                 </div>
                 <button

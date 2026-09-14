@@ -36,22 +36,22 @@ export async function generateMetadata({ params }: TeamMemberPageProps): Promise
   const resolvedParams = await Promise.resolve(params);
   const slug = resolvedParams?.slug;
   if (!slug) {
-    return { title: "Researcher Profile | Environmental Health & Ecotoxicology Laboratory" };
+    return { title: "Researcher Profile | Laboratory of Environmental Health and Ecotoxicology (LabEHE)" };
   }
 
   const member = await getTeamMemberBySlug(slug);
 
   if (!member) {
     return {
-      title: "Member Not Found | Environmental Health & Ecotoxicology Laboratory",
+      title: "Member Not Found | Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
     };
   }
 
   return {
-    title: `${member.name} — ${member.role} | Environmental Health & Ecotoxicology Laboratory`,
-    description: member.bio || `${member.name}, ${member.role} at the Environmental Health & Ecotoxicology Laboratory.`,
+    title: `${member.name} — ${member.role} | Laboratory of Environmental Health and Ecotoxicology (LabEHE)`,
+    description: member.bio || `${member.name}, ${member.role} at the Laboratory of Environmental Health and Ecotoxicology (LabEHE).`,
     openGraph: {
-      title: `${member.name} | Environmental Health & Ecotoxicology Laboratory`,
+      title: `${member.name} | Laboratory of Environmental Health and Ecotoxicology (LabEHE)`,
       description: member.bio,
       images: [
         {

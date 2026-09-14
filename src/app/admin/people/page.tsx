@@ -38,7 +38,16 @@ import {
   Quote,
   MoveUp,
   MoveDown,
+  ArrowLeft,
+  Image as ImageIcon,
+  Share2,
+  Phone,
+  Lock,
+  Star,
+  Upload,
+  Info
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { getTeamMembers, saveTeamMember, deleteTeamMember } from "@/lib/team/store";
 import { TeamMember, TeamCategory, MemberPublication } from "@/lib/team/types";
 import { TEAM_CATEGORIES_META } from "@/lib/team/seed-data";
@@ -53,11 +62,11 @@ export default function AdminTeamPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Modal / Drawer state
-  const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "basic" | "media" | "bio" | "theses" | "publications" | "alumni" | "social"
-  >("basic");
+  // Full-Page Studio View State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editorSection, setEditorSection] = useState<
+    "all" | "basic" | "media" | "bio" | "theses" | "publications" | "alumni" | "social" | "visibility"
+  >("all");
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
@@ -182,8 +191,9 @@ export default function AdminTeamPage() {
     setSkillsInput("");
     setAwardsInput("");
     setEducationInput("");
-    setActiveTab("basic");
-    setShowModal(true);
+    setEditorSection("all");
+    setIsEditing(true);
+    setStatusMessage(null);
   };
 
   const handleOpenEdit = (member: TeamMember) => {
@@ -192,8 +202,9 @@ export default function AdminTeamPage() {
     setSkillsInput((member.skills || []).join(", "));
     setAwardsInput((member.awards || []).join("\n"));
     setEducationInput((member.education || []).join("\n"));
-    setActiveTab("basic");
-    setShowModal(true);
+    setEditorSection("all");
+    setIsEditing(true);
+    setStatusMessage(null);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -247,10 +258,7 @@ export default function AdminTeamPage() {
         type: "success",
         text: `Researcher "${formData.name}" saved successfully!`,
       });
-      setTimeout(() => {
-        setShowModal(false);
-        setStatusMessage(null);
-      }, 900);
+      setIsEditing(false);
     } catch (err) {
       console.error(err);
       setStatusMessage({ type: "error", text: "Failed to save team member." });
@@ -298,6 +306,49 @@ export default function AdminTeamPage() {
     });
   };
 
+  // Photo Upload State & Handler
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setStatusMessage({ type: "error", text: "Image file exceeds 5MB limit. Please upload a smaller image." });
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      // First attempt Supabase Storage upload
+      try {
+        const supabase = createClient();
+        const fileExt = file.name.split(".").pop();
+        const fileName = `team/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+        const { data, error } = await supabase.storage.from("team-media").upload(fileName, file, { upsert: true });
+        if (!error && data) {
+          const { data: { publicUrl } } = supabase.storage.from("team-media").getPublicUrl(data.path);
+          setFormData((prev) => ({ ...prev, imageSrc: publicUrl }));
+          setStatusMessage({ type: "success", text: "Profile photo uploaded to cloud storage!" });
+          setUploadingPhoto(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("Cloud storage upload fallback:", e);
+      }
+
+      // FileReader fallback
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setFormData((prev) => ({ ...prev, imageSrc: result }));
+        setStatusMessage({ type: "success", text: "Profile photo loaded and staged for saving!" });
+        setUploadingPhoto(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: "Failed to upload image: " + (err.message || String(err)) });
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleRemovePublication = (index: number) => {
     const currentPubs = formData.publications || [];
     setFormData({
@@ -306,8 +357,14 @@ export default function AdminTeamPage() {
     });
   };
 
+  // Styling helpers
+  const cardBg = isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-[#0F172A] border-slate-800 shadow-md";
+  const subText = isLight ? "text-slate-500" : "text-slate-400";
+  const headingText = isLight ? "text-slate-900" : "text-white";
+  const inputBg = isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-emerald-500" : "bg-[#090D16] border-slate-700 text-white focus:border-emerald-400";
+
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-6 max-w-7xl mx-auto pb-20">
       {/* Toast Notification */}
       {statusMessage && (
         <div
@@ -332,1249 +389,1388 @@ export default function AdminTeamPage() {
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* 1. HEADER & ACTION BAR */}
-      {/* ============================================================ */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)] tracking-tight">
-                Team &amp; Personnel Manager
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Create, edit, organize research hierarchy, and manage full academic profiles.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/team"
-            target="_blank"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition border border-slate-200 dark:border-slate-700"
-          >
-            <span>View Public Team Page</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
-
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition shadow-md shadow-emerald-950/20 active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Researcher</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 2. STATS OVERVIEW CARDS */}
-      {/* ============================================================ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Total Team
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
-            {totalCount}
-          </div>
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-            {activeCount} Active Members
-          </span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-            <ShieldCheck className="w-3 h-3" />
-            <span>Principal Inv.</span>
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
-            {piCount}
-          </div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400">
-            Lab Directorship
-          </span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1">
-            <Layers className="w-3 h-3" />
-            <span>Postdoc &amp; PhD</span>
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
-            {phdCount}
-          </div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400">
-            Independent Researchers
-          </span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider flex items-center gap-1">
-            <BookOpen className="w-3 h-3" />
-            <span>M.Sc. Graduate</span>
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
-            {gradCount}
-          </div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400">
-            Thesis Candidates
-          </span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
-            <GraduationCap className="w-3 h-3" />
-            <span>Undergraduate</span>
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
-            {ugCount}
-          </div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400">
-            Honors &amp; Interns
-          </span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
-            <Sparkles className="w-3 h-3" />
-            <span>Alumni Network</span>
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
-            {alumniCount}
-          </div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400">
-            Global Placements
-          </span>
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 3. FILTERS, SEARCH & TABS */}
-      {/* ============================================================ */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 p-4 rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-sm">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-          {[
-            { id: "all", label: "All Members", count: totalCount },
-            { id: "pi", label: "PI & Director", count: piCount },
-            { id: "phd", label: "Postdoc & PhD", count: phdCount },
-            { id: "graduate", label: "M.Sc. Graduate", count: gradCount },
-            { id: "undergraduate", label: "Undergraduate", count: ugCount },
-            { id: "alumni", label: "Alumni Network", count: alumniCount },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setCategoryFilter(tab.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
-                categoryFilter === tab.id
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-slate-50 dark:bg-[#0B1120] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span
-                className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${
-                  categoryFilter === tab.id
-                    ? "bg-black/20 text-white"
-                    : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+      {/* ========================================================================= */}
+      {/* 1. FULL PAGE RESEARCHER STUDIO (WHEN isEditing === true)                   */}
+      {/* ========================================================================= */}
+      {isEditing ? (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Top Sticky Action Bar */}
+          <div className={`sticky top-0 z-30 p-4 sm:p-5 rounded-2xl border backdrop-blur-md shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+            isLight ? "bg-white/95 border-slate-200" : "bg-[#0D1526]/95 border-slate-800"
+          }`}>
+            <div className="flex items-center gap-3.5">
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className={`p-2 rounded-xl border transition flex items-center gap-2 text-xs font-semibold ${
+                  isLight ? "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700" : "border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
                 }`}
               >
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Back to Personnel</span>
+              </button>
 
-        {/* Search & Status Filter */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search researchers, topics, email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active Only</option>
-            <option value="inactive">Inactive Only</option>
-          </select>
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 4. RESEARCHERS TABLE */}
-      {/* ============================================================ */}
-      <div className="rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            <span className="text-xs font-semibold">Loading personnel records...</span>
-          </div>
-        ) : filteredMembers.length === 0 ? (
-          <div className="py-20 text-center space-y-3">
-            <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
-            <div className="text-base font-bold text-slate-900 dark:text-white">
-              No researchers found
-            </div>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              No members matched your search or category filter. Try clearing filters or add a new researcher.
-            </p>
-            <button
-              onClick={handleOpenAdd}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Member</span>
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0B1120]/60 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  <th className="py-3.5 px-5">Researcher &amp; Category</th>
-                  <th className="py-3.5 px-4">Role &amp; Affiliation</th>
-                  <th className="py-3.5 px-4">Research / Destination</th>
-                  <th className="py-3.5 px-4 text-center">Publications</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                {filteredMembers.map((member) => {
-                  const meta = TEAM_CATEGORIES_META[member.category] || {
-                    label: member.category,
-                    badgeColor: "bg-slate-100 text-slate-700",
-                  };
-                  const isAlumni = member.category === "alumni";
-
-                  return (
-                    <tr
-                      key={member.id}
-                      className="hover:bg-slate-50/80 dark:hover:bg-[#0B1120]/40 transition-colors group"
-                    >
-                      {/* Researcher Info */}
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-3.5">
-                          <img
-                            src={member.imageSrc}
-                            alt={member.name}
-                            className="w-12 h-12 rounded-2xl object-cover object-top border border-slate-200 dark:border-slate-800 shrink-0 shadow-2xs"
-                          />
-                          <div className="min-w-0 space-y-1">
-                            <div className="font-bold text-slate-900 dark:text-white text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition truncate">
-                              {member.name}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${meta.badgeColor}`}
-                              >
-                                {meta.label}
-                              </span>
-                              {member.alumniYear && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[9px] font-bold text-slate-600 dark:text-slate-400">
-                                  {member.alumniYear}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Role & Affiliation */}
-                      <td className="py-4 px-4 max-w-[220px]">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                          {member.role}
-                        </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          {member.department || member.affiliation || "Department of Environmental Sciences"}
-                        </div>
-                        {member.email && (
-                          <div className="text-[10px] text-slate-400 flex items-center gap-1 pt-0.5 truncate">
-                            <Mail className="w-3 h-3 text-emerald-500 shrink-0" />
-                            <span>{member.email}</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Research Topics / Placement */}
-                      <td className="py-4 px-4 max-w-[260px]">
-                        {isAlumni ? (
-                          <div className="space-y-0.5">
-                            <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400 truncate">
-                              {member.currentPosition || "Career Placement"}
-                            </div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                              {member.currentInstitution || "Active Alumnus"}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <div className="text-[11px] text-slate-700 dark:text-slate-300 font-medium line-clamp-1">
-                              {member.undergradThesis ||
-                                member.mscThesis ||
-                                member.phdThesis ||
-                                (member.researchInterests && member.researchInterests[0]) ||
-                                "Ecotoxicological Research"}
-                            </div>
-                            {member.researchInterests && member.researchInterests.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {member.researchInterests.slice(0, 2).map((r, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-[#0B1120] text-[9px] text-slate-600 dark:text-slate-400 font-medium truncate max-w-[120px]"
-                                  >
-                                    {r}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Publications Count */}
-                      <td className="py-4 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
-                          <FileText className="w-3 h-3 text-emerald-500" />
-                          <span>
-                            {member.publications?.length ||
-                              (member.category === "pi" ? member.publicationsCount || 74 : 0)}
-                          </span>
-                        </span>
-                      </td>
-
-                      {/* Active Status Toggle */}
-                      <td className="py-4 px-4 text-center">
-                        <button
-                          onClick={() => handleToggleActive(member)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer border ${
-                            member.isActive !== false
-                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-700 hover:bg-slate-200"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              member.isActive !== false ? "bg-emerald-500" : "bg-slate-400"
-                            }`}
-                          />
-                          <span>{member.isActive !== false ? "Active" : "Inactive"}</span>
-                        </button>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* View Profile */}
-                          <Link
-                            href={`/team/${member.slug}`}
-                            target="_blank"
-                            title="View Public Profile"
-                            className="p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition border border-slate-200 dark:border-slate-800"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </Link>
-
-                          {/* Edit */}
-                          <button
-                            onClick={() => handleOpenEdit(member)}
-                            title="Edit Researcher"
-                            className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 transition border border-emerald-200 dark:border-emerald-800/60 cursor-pointer"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-
-                          {/* Delete */}
-                          <button
-                            onClick={() => setDeleteConfirmId(member.id)}
-                            title="Delete Researcher"
-                            className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition border border-rose-200 dark:border-rose-800/60 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ============================================================ */}
-      {/* 5. RESEARCHER CREATE / EDIT MODAL DRAWER */}
-      {/* ============================================================ */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-4xl rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-8 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-[#0B1120]/50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                  <Users className="w-5 h-5" />
-                </div>
+                {formData.imageSrc && (
+                  <img
+                    src={formData.imageSrc}
+                    alt={formData.name || "Avatar"}
+                    className="w-10 h-10 rounded-xl object-cover border border-emerald-500/30 shrink-0"
+                  />
+                )}
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
-                    {formData.id ? "Edit Researcher Profile" : "Create New Team Member"}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Fill in academic credentials, theses, publications, and career data.
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {formData.id ? "Edit Researcher Profile" : "Create New Team Member"}
+                    </span>
+                    <span className={`text-xs font-mono ${subText}`}>
+                      {formData.category ? TEAM_CATEGORIES_META[formData.category]?.label : "Researcher"}
+                    </span>
+                  </div>
+                  <h1 className={`text-lg sm:text-xl font-extrabold truncate max-w-lg ${headingText} mt-0.5`}>
+                    {formData.name || "Untitled Researcher"}
+                  </h1>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              {formData.slug && (
+                <Link
+                  href={`/team/${formData.slug}`}
+                  target="_blank"
+                  className={`hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
+                    isLight ? "border-slate-200 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                  }`}
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>View Public Profile</span>
+                </Link>
+              )}
 
               <button
-                onClick={() => setShowModal(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className={`px-4 py-2 text-xs font-semibold rounded-xl border transition ${
+                  isLight ? "border-slate-300 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                }`}
               >
-                <X className="w-5 h-5" />
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] cursor-pointer"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>Save Researcher</span>
+                  </>
+                )}
               </button>
             </div>
+          </div>
 
-            {/* Tab Navigation */}
-            <div className="flex items-center gap-2 px-6 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-[#0B1120]/30 overflow-x-auto scrollbar-none shrink-0">
-              {[
-                { id: "basic", label: "Basic Info", icon: Users },
-                { id: "media", label: "Photo & Media", icon: Sparkles },
-                { id: "bio", label: "Bio & Focus", icon: FlaskConical },
-                { id: "theses", label: "Theses & Projects", icon: BookOpen },
-                { id: "publications", label: "Publications", icon: FileText },
-                { id: "alumni", label: "Alumni Placement", icon: Compass },
-                { id: "social", label: "Social & Contact", icon: Globe },
-              ].map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === tab.id
-                        ? "bg-emerald-600 text-white shadow-xs"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Quick Section Filter Bar */}
+          <div className={`p-2 rounded-2xl border flex items-center gap-1.5 overflow-x-auto ${cardBg}`}>
+            {[
+              { id: "all", label: "All Sections", icon: Layers },
+              { id: "basic", label: "01 Basic Info & Credentials", icon: Users },
+              { id: "media", label: "02 Photo & Avatar", icon: ImageIcon },
+              { id: "bio", label: "03 Bio & Research Focus", icon: FlaskConical },
+              { id: "theses", label: "04 Theses & Projects", icon: BookOpen },
+              { id: "publications", label: "05 Publications", icon: FileText },
+              { id: "alumni", label: "06 Alumni Placement", icon: Compass },
+              { id: "social", label: "07 Social & Contact", icon: Globe },
+              { id: "visibility", label: "08 Visibility & Order", icon: Star },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = editorSection === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setEditorSection(tab.id as any)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-emerald-600 text-white shadow-sm font-bold"
+                      : isLight
+                      ? "text-slate-600 hover:bg-slate-100"
+                      : "text-slate-400 hover:bg-slate-800"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Modal Body / Tab Content */}
-            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
-              
-              {/* ----------------- TAB 1: BASIC INFO ----------------- */}
-              {activeTab === "basic" && (
+          {/* Form Content */}
+          <form onSubmit={handleSave} className="space-y-6">
+            {/* 1. BASIC INFO */}
+            {(editorSection === "all" || editorSection === "basic") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      01. Basic Information &amp; Academic Credentials
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Full formal name, academic hierarchy tier, institutional affiliation, and profile slug.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Full Name &amp; Academic Title <span className="text-rose-500">*</span>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Full Name &amp; Academic Title <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Dr. Mohammad S. Kabir or Farhan Sadik"
                         value={formData.name || ""}
-                        onChange={(e) => {
-                          const name = e.target.value;
-                          setFormData({
-                            ...formData,
-                            name,
-                            slug: formData.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-                          });
-                        }}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="e.g. Dr. Mohammad S. Kabir"
+                        className={`w-full px-4 py-2.5 text-sm font-medium rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        URL Slug (Unique profile link identifier)
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        URL Slug (Unique Link Identifier)
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. farhan-sadik"
                         value={formData.slug || ""}
                         onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        placeholder="e.g. dr-mohammad-s-kabir"
+                        className={`w-full px-4 py-2.5 text-sm font-mono rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Academic Hierarchy Category <span className="text-rose-500">*</span>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Academic Hierarchy Category <span className="text-red-500">*</span>
                       </label>
                       <select
                         value={formData.category || "undergraduate"}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            category: e.target.value as TeamCategory,
-                          })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value as TeamCategory })}
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       >
-                        <option value="pi">Principal Investigator &amp; Lab Director</option>
-                        <option value="phd">Postdoctoral &amp; PhD Researcher (Postdoc, Ph.D.)</option>
-                        <option value="graduate">Graduate Researcher (M.Sc. &amp; M.S.)</option>
-                        <option value="undergraduate">Undergraduate Fellow &amp; Assistant</option>
-                        <option value="alumni">Lab Alumni Network</option>
+                        {Object.entries(TEAM_CATEGORIES_META).map(([key, meta]) => (
+                          <option key={key} value={key}>
+                            {meta.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Lab Role / Academic Designation <span className="text-rose-500">*</span>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Lab Role / Academic Designation <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Senior Graduate Researcher & Lab Manager"
                         value={formData.role || ""}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        placeholder="e.g. Professor &amp; Principal Investigator"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                         Department
                       </label>
                       <input
                         type="text"
                         value={formData.department || ""}
                         onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        placeholder="e.g. Department of Environmental Sciences"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                         Affiliation / University
                       </label>
                       <input
                         type="text"
                         value={formData.affiliation || ""}
                         onChange={(e) => setFormData({ ...formData, affiliation: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        placeholder="e.g. Jahangirnagar University"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Display Order Index (Lower numbers appear first)
+            {/* 2. PHOTO & MEDIA */}
+            {(editorSection === "all" || editorSection === "media") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      02. Profile Photography &amp; Avatar
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Upload high-resolution academic portrait, paste custom URL, or pick a default preset.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: Avatar Preview */}
+                  <div className="lg:col-span-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className={`block text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                        Live Avatar Preview
+                      </label>
+                      {formData.imageSrc && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, imageSrc: "" })}
+                          className="text-[11px] text-red-500 hover:underline font-semibold"
+                        >
+                          Remove Photo
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative w-full aspect-square rounded-3xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 shadow-lg flex items-center justify-center group">
+                      {formData.imageSrc ? (
+                        <>
+                          <img
+                            src={formData.imageSrc}
+                            alt="Researcher Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                            <span className="text-white text-xs font-bold font-mono">
+                              1:1 Aspect Ratio Preview
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center p-6 space-y-2">
+                          <Users className="w-16 h-16 text-slate-400 mx-auto opacity-50" />
+                          <p className="text-xs text-slate-400 font-medium">No photo uploaded</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Upload Controls & Image Guidelines */}
+                  <div className="lg:col-span-8 space-y-5">
+                    {/* Device Upload Area */}
+                    <div className="space-y-2">
+                      <label className={`block text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                        Upload Photo from Device
+                      </label>
+                      <div className={`p-5 rounded-2xl border-2 border-dashed transition-all ${
+                        isLight ? "border-slate-300 bg-slate-50/50 hover:bg-slate-50" : "border-slate-700 bg-slate-900/30 hover:bg-slate-900/60"
+                      }`}>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                              <Upload className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className={`text-xs font-bold ${headingText}`}>
+                                Select JPG, PNG, or WebP photo
+                              </div>
+                              <div className={`text-[11px] ${subText}`}>
+                                Max file size: 5 MB · Automatically optimized
+                              </div>
+                            </div>
+                          </div>
+
+                          <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer whitespace-nowrap">
+                            {uploadingPhoto ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Choose Image File</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/png, image/jpeg, image/webp"
+                              disabled={uploadingPhoto}
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handlePhotoUpload(file);
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Prominent Aspect Ratio & Dimension Guidelines Note */}
+                    <div className={`p-4 rounded-2xl border ${
+                      isLight ? "bg-amber-50/70 border-amber-200 text-amber-900" : "bg-amber-950/20 border-amber-800/60 text-amber-200"
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        <div className="p-1 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                          <Info className="w-4 h-4" />
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          <div className="font-bold uppercase tracking-wider text-[11px] text-amber-800 dark:text-amber-300">
+                            📐 Image Size &amp; Aspect Ratio Guidelines
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] leading-relaxed opacity-90">
+                            <div>
+                              <strong>• Recommended Aspect Ratio:</strong> <code className="px-1.5 py-0.5 rounded bg-amber-500/15 font-mono font-bold">1:1 (Square)</code>
+                            </div>
+                            <div>
+                              <strong>• Optimal Dimensions:</strong> <code className="px-1.5 py-0.5 rounded bg-amber-500/15 font-mono font-bold">800 × 800 px</code> (Min 400×400)
+                            </div>
+                            <div>
+                              <strong>• Supported Formats:</strong> JPG, PNG, WebP (Max 5 MB)
+                            </div>
+                            <div>
+                              <strong>• Framing Tip:</strong> Centered academic headshot with clear lighting
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Direct URL Input */}
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Or Paste Direct Image URL (HTTPS / Remote Storage)
                       </label>
                       <input
-                        type="number"
-                        value={formData.orderIndex || 0}
-                        onChange={(e) =>
-                          setFormData({ ...formData, orderIndex: parseInt(e.target.value) || 0 })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        type="url"
+                        value={formData.imageSrc || ""}
+                        onChange={(e) => setFormData({ ...formData, imageSrc: e.target.value })}
+                        placeholder="https://images.unsplash.com/... or https://supabase.co/storage/..."
+                        className={`w-full px-4 py-2.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
 
-                    <div className="flex items-center gap-3 pt-6">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.isActive !== false}
-                          onChange={(e) =>
-                            setFormData({ ...formData, isActive: e.target.checked })
-                          }
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    {/* Quick Preset Portraits */}
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Quick Preset Sample Avatars
                       </label>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Active Profile (Visible on Public Website)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ----------------- TAB 2: PHOTO & MEDIA ----------------- */}
-              {activeTab === "media" && (
-                <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-3xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800">
-                    <div className="relative w-36 h-36 rounded-3xl overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg shrink-0 bg-slate-900">
-                      <img
-                        src={
-                          formData.imageSrc ||
-                          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80"
-                        }
-                        alt="Preview"
-                        className="w-full h-full object-cover object-top"
-                      />
-                    </div>
-
-                    <div className="space-y-3 flex-1">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          Portrait Image URL <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="url"
-                          required
-                          placeholder="https://images.unsplash.com/..."
-                          value={formData.imageSrc || ""}
-                          onChange={(e) =>
-                            setFormData({ ...formData, imageSrc: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
-                        />
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 text-[11px]">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              imageSrc:
-                                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-                            })
-                          }
-                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-600 dark:text-slate-300 transition"
-                        >
-                          Default Portrait 1
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              imageSrc:
-                                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
-                            })
-                          }
-                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-600 dark:text-slate-300 transition"
-                        >
-                          Default Portrait 2
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              imageSrc:
-                                "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=600&q=80",
-                            })
-                          }
-                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-600 dark:text-slate-300 transition"
-                        >
-                          Default Portrait 3
-                        </button>
+                      <div className="grid grid-cols-4 gap-2.5">
+                        {[
+                          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+                          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+                          "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+                          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
+                        ].map((presetUrl, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, imageSrc: presetUrl })}
+                            className={`aspect-square rounded-2xl overflow-hidden border-2 transition hover:scale-105 cursor-pointer ${
+                              formData.imageSrc === presetUrl
+                                ? "border-emerald-500 shadow-md"
+                                : "border-slate-300 dark:border-slate-700 hover:border-emerald-400"
+                            }`}
+                          >
+                            <img src={presetUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* ----------------- TAB 3: BIO & RESEARCH FOCUS ----------------- */}
-              {activeTab === "bio" && (
+            {/* 3. BIO & RESEARCH FOCUS */}
+            {(editorSection === "all" || editorSection === "bio") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <FlaskConical className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      03. Biography, Statement &amp; Research Focus
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Academic overview, inspiring quote, scientific keywords, technical skills, and honors.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Professional Academic Biography
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Comprehensive Biography &amp; Scholarly Statement
                     </label>
                     <textarea
-                      rows={4}
-                      placeholder="Comprehensive overview of research activities, expertise, analytical methodologies..."
+                      rows={5}
                       value={formData.bio || ""}
                       onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 leading-relaxed"
+                      placeholder="Dr. Kabir is an established Environmental Geochemist specializing in..."
+                      className={`w-full p-4 text-sm rounded-xl border outline-none transition resize-y leading-relaxed ${inputBg}`}
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Personal Research Quote / Vision Statement
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Inspiring Academic Quote / Research Motto
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Translating high-resolution chemical data into evidence-based ecological protection."
                       value={formData.quote || ""}
                       onChange={(e) => setFormData({ ...formData, quote: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                      placeholder="&quot;Exploring the frontiers of estuarine toxicology to protect coastal ecosystems.&quot;"
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Core Research Focus Areas (Comma separated)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Microplastics, Heavy Metal Speciation, Water Quality Sensors, Ecotoxicology"
-                      value={interestsInput}
-                      onChange={(e) => setInterestsInput(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Technical &amp; Lab Skills (Comma separated)
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Research Interests (Comma-separated)
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Micro-FTIR, ICP-MS, AAS, qRT-PCR, R, QGIS"
-                        value={skillsInput}
-                        onChange={(e) => setSkillsInput(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        value={interestsInput}
+                        onChange={(e) => setInterestsInput(e.target.value)}
+                        placeholder="Microplastics, Estuarine Toxicology, Heavy Metals"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Academic Degrees / Education (One per line)
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Technical Skills &amp; Instrumentation (Comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={skillsInput}
+                        onChange={(e) => setSkillsInput(e.target.value)}
+                        placeholder="FTIR Spectroscopy, ICP-MS, R, GIS Mapping"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Academic Education History (One per line)
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="e.g. M.Sc. in Environmental Sciences, Jahangirnagar University (2024)"
                         value={educationInput}
                         onChange={(e) => setEducationInput(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                        placeholder={`Ph.D. in Environmental Toxicology, University of Tokyo (2018)\nM.Sc. in Environmental Sciences, JU (2013)`}
+                        className={`w-full p-3 text-xs rounded-xl border outline-none transition resize-y ${inputBg}`}
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Awards &amp; Fellowships (One per line)
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="e.g. National Science and Technology (NST) Fellowship (2024)"
-                      value={awardsInput}
-                      onChange={(e) => setAwardsInput(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
-                    />
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Awards, Grants &amp; Honors (One per line)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={awardsInput}
+                        onChange={(e) => setAwardsInput(e.target.value)}
+                        placeholder={`National Science & Tech Fellowship (2024)\nDean's Award for Excellence in Research (2022)`}
+                        className={`w-full p-3 text-xs rounded-xl border outline-none transition resize-y ${inputBg}`}
+                      />
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* ----------------- TAB 4: THESES & PROJECTS ----------------- */}
-              {activeTab === "theses" && (
-                <div className="space-y-6">
-                  {/* Undergrad Capstone */}
-                  <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
-                      <GraduationCap className="w-4 h-4" />
-                      <span>Undergraduate 4th-Year Capstone Thesis</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Undergraduate Thesis Title"
-                        value={formData.undergradThesis || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, undergradThesis: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                      />
-                      <textarea
-                        rows={2}
-                        placeholder="Methodology, findings, extraction recovery, sampling transects..."
-                        value={formData.undergradDescription || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, undergradDescription: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
+            {/* 4. THESES & PROJECTS */}
+            {(editorSection === "all" || editorSection === "theses") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5" />
                   </div>
-
-                  {/* M.Sc. Thesis */}
-                  <div className="p-4 rounded-2xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/50 space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">
-                      <BookOpen className="w-4 h-4" />
-                      <span>Master of Science (M.Sc.) Thesis</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Master of Science Thesis Title"
-                        value={formData.mscThesis || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, mscThesis: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                      />
-                      <textarea
-                        rows={2}
-                        placeholder="Analytical parameters, bioaccumulation kinetics, model formulations..."
-                        value={formData.mscDescription || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, mscDescription: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      04. Academic Theses &amp; Key Projects
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Undergraduate, Master's, or Doctoral dissertation titles, ongoing topics, and principal advisors.
+                    </p>
                   </div>
+                </div>
 
-                  {/* Ph.D. Dissertation */}
-                  <div className="p-4 rounded-2xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/50 space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
-                      <Layers className="w-4 h-4" />
-                      <span>Ph.D. Doctoral Dissertation</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Doctoral Dissertation Title"
-                        value={formData.phdThesis || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phdThesis: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                      />
-                      <textarea
-                        rows={2}
-                        placeholder="Hypotheses, toxicogenomic assays, non-target screening discoveries..."
-                        value={formData.phdDescription || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phdDescription: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Advisor & Graduation */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Primary Academic Advisor
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Thesis Topic / Working Title
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Dr. Mohammad S. Kabir"
+                        value={formData.thesisTopic || ""}
+                        onChange={(e) => setFormData({ ...formData, thesisTopic: e.target.value })}
+                        placeholder="e.g. Assessment of microplastic loads in Meghna River"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Principal Advisor / Mentor
+                      </label>
+                      <input
+                        type="text"
                         value={formData.advisor || ""}
                         onChange={(e) => setFormData({ ...formData, advisor: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                        placeholder="e.g. Prof. Mohammad S. Kabir"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Expected Completion / Graduation Year
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Expected / Completion Date
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. 2026 or Fall 2027"
                         value={formData.expectedGraduation || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, expectedGraduation: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                        onChange={(e) => setFormData({ ...formData, expectedGraduation: e.target.value })}
+                        placeholder="e.g. December 2026"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Undergraduate Thesis
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.undergradThesis || ""}
+                        onChange={(e) => setFormData({ ...formData, undergradThesis: e.target.value })}
+                        placeholder="B.Sc. Thesis Title"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Master's Thesis
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.mscThesis || ""}
+                        onChange={(e) => setFormData({ ...formData, mscThesis: e.target.value })}
+                        placeholder="M.Sc. Dissertation Title"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Doctoral Thesis
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.phdThesis || ""}
+                        onChange={(e) => setFormData({ ...formData, phdThesis: e.target.value })}
+                        placeholder="Ph.D. Dissertation Title"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* ----------------- TAB 5: PUBLICATIONS ----------------- */}
-              {activeTab === "publications" && (
-                <div className="space-y-6">
-                  {/* Add Publication Box */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 space-y-3">
-                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
-                      <Plus className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>Add Authored Paper / Publication</span>
-                    </div>
+            {/* 5. PUBLICATIONS */}
+            {(editorSection === "all" || editorSection === "publications") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      05. Selected Key Publications
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Attach prominent journal publications and papers authored by this researcher.
+                    </p>
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
+                <div className="space-y-4">
+                  {/* Add Publication Sub-Form */}
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 space-y-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      + Add Key Publication
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <input
                         type="text"
-                        placeholder="Paper Title (e.g. Microplastic ingestion and trophic accumulation...)"
                         value={pubForm.title}
                         onChange={(e) => setPubForm({ ...pubForm, title: e.target.value })}
-                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                        placeholder="Paper Title"
+                        className={`w-full px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
                       />
+                      <input
+                        type="text"
+                        value={pubForm.journal}
+                        onChange={(e) => setPubForm({ ...pubForm, journal: e.target.value })}
+                        placeholder="Journal Name"
+                        className={`w-full px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Journal, Volume, Pages"
-                          value={pubForm.journal}
-                          onChange={(e) => setPubForm({ ...pubForm, journal: e.target.value })}
-                          className="sm:col-span-2 px-3.5 py-2 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Year"
-                          value={pubForm.year}
-                          onChange={(e) =>
-                            setPubForm({ ...pubForm, year: parseInt(e.target.value) || 2025 })
-                          }
-                          className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white font-bold"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="DOI (e.g. 10.1016/j.envpol.2025.122340)"
-                          value={pubForm.doi || ""}
-                          onChange={(e) => setPubForm({ ...pubForm, doi: e.target.value })}
-                          className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                        />
-                        <select
-                          value={pubForm.role || "First Author"}
-                          onChange={(e) => setPubForm({ ...pubForm, role: e.target.value })}
-                          className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                        >
-                          <option value="First Author">First Author</option>
-                          <option value="Lead Author">Lead Author</option>
-                          <option value="Co-Author">Co-Author</option>
-                          <option value="Corresponding Author">Corresponding Author</option>
-                        </select>
-                      </div>
-
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <input
+                        type="number"
+                        value={pubForm.year}
+                        onChange={(e) => setPubForm({ ...pubForm, year: parseInt(e.target.value) || 2026 })}
+                        placeholder="Year"
+                        className={`w-full px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                      <input
+                        type="text"
+                        value={pubForm.doi || ""}
+                        onChange={(e) => setPubForm({ ...pubForm, doi: e.target.value })}
+                        placeholder="DOI (e.g. 10.1016/...)"
+                        className={`w-full px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      />
                       <button
                         type="button"
                         onClick={handleAddPublication}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5"
+                        className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition cursor-pointer"
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Publication to Profile</span>
+                        + Add to List
                       </button>
                     </div>
                   </div>
 
                   {/* Publications List */}
-                  <div className="space-y-2">
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Attached Publications ({formData.publications?.length || 0})
-                    </div>
-
-                    {(!formData.publications || formData.publications.length === 0) ? (
-                      <p className="text-xs text-slate-400 italic">No individual papers listed yet.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {formData.publications.map((pub, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3 text-xs"
-                          >
-                            <div className="space-y-1 min-w-0">
-                              <div className="font-bold text-slate-900 dark:text-white leading-snug">
-                                {pub.title}
-                              </div>
-                              <div className="text-slate-500 dark:text-slate-400 italic">
-                                {pub.journal} ({pub.year}) • <span className="text-emerald-500 font-semibold">{pub.role}</span>
-                              </div>
-                              {pub.doi && (
-                                <div className="text-[10px] text-slate-400">
-                                  DOI: {pub.doi}
-                                </div>
-                              )}
+                  {formData.publications && formData.publications.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.publications.map((p, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-3 text-xs"
+                        >
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white">{p.title}</div>
+                            <div className="text-slate-500 dark:text-slate-400 mt-0.5">
+                              {p.journal} ({p.year}) {p.doi && `· doi:${p.doi}`}
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePublication(idx)}
-                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition shrink-0"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePublication(idx)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={`text-xs ${subText} italic`}>No publications attached yet.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 6. ALUMNI PLACEMENT */}
+            {(editorSection === "all" || editorSection === "alumni") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <Compass className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      06. Alumni Career &amp; Post-Graduation Placement
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Applicable for Alumni members: Track current professional position, company, and graduation year.
+                    </p>
                   </div>
                 </div>
-              )}
 
-              {/* ----------------- TAB 6: ALUMNI CAREER ----------------- */}
-              {activeTab === "alumni" && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <span>
-                      These career destination and alumni metrics display prominently on the Alumni Network cards and profile pages.
-                    </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Current Job Title / Position
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.currentPosition || ""}
+                      onChange={(e) => setFormData({ ...formData, currentPosition: e.target.value })}
+                      placeholder="e.g. Postdoctoral Fellow"
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Current Designation / Position (Yellow Highlight)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Assistant Professor or Senior Chemist"
-                        value={formData.currentPosition || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, currentPosition: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Current Destination Institution / Organization
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. ETH Zürich or U.S. EPA"
-                        value={formData.currentInstitution || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, currentInstitution: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Current Institution / Company
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.currentInstitution || ""}
+                      onChange={(e) => setFormData({ ...formData, currentInstitution: e.target.value })}
+                      placeholder="e.g. Oxford University / UNESCO"
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Alumni Class / Graduating Year
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Ph.D. Class of 2024 or M.Sc. 2023"
-                        value={formData.alumniYear || ""}
-                        onChange={(e) => setFormData({ ...formData, alumniYear: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Graduation Year
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.alumniYear || ""}
+                      onChange={(e) => setFormData({ ...formData, alumniYear: e.target.value })}
+                      placeholder="e.g. 2024"
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Past Lab Role / Tenure
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Former Doctoral Researcher (2020 – 2024)"
-                        value={formData.pastRole || ""}
-                        onChange={(e) => setFormData({ ...formData, pastRole: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                      Past Role in Laboratory
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.pastRole || ""}
+                      onChange={(e) => setFormData({ ...formData, pastRole: e.target.value })}
+                      placeholder="e.g. Former M.Sc. Student"
+                      className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                    />
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* ----------------- TAB 7: SOCIAL & HANDLES ----------------- */}
-              {activeTab === "social" && (
+            {/* 7. SOCIAL & CONTACT */}
+            {(editorSection === "all" || editorSection === "social") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      07. Contact Channels &amp; Academic Identity Profiles
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Email, Google Scholar, ORCID, ResearchGate, LinkedIn, and personal website links.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Email Address
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Official Email
                       </label>
                       <input
                         type="email"
-                        placeholder="e.g. researcher@juniv.edu"
                         value={formData.email || ""}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                        placeholder="researcher@juniv.edu"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                         Phone Number
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. +880 2-7791045"
                         value={formData.phone || ""}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                        placeholder="+880 17..."
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Office / Lab Room Location
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. W.B. Academic Building, Room 304"
-                      value={formData.officeLocation || ""}
-                      onChange={(e) => setFormData({ ...formData, officeLocation: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Google Scholar Profile URL
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="https://scholar.google.com/citations?user=..."
-                        value={formData.googleScholarUrl || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, googleScholarUrl: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        ORCID ID (e.g. 0000-0002-8419-7201)
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Office Location
                       </label>
                       <input
                         type="text"
-                        placeholder="0000-0002-8419-7201"
-                        value={formData.orcid || ""}
-                        onChange={(e) => setFormData({ ...formData, orcid: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                        value={formData.officeLocation || ""}
+                        onChange={(e) => setFormData({ ...formData, officeLocation: e.target.value })}
+                        placeholder="Room 304, Env. Science Bldg"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        ResearchGate Profile URL
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Google Scholar URL
                       </label>
                       <input
                         type="url"
-                        placeholder="https://www.researchgate.net/profile/..."
-                        value={formData.researchGateUrl || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, researchGateUrl: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                        value={formData.googleScholarUrl || ""}
+                        onChange={(e) => setFormData({ ...formData, googleScholarUrl: e.target.value })}
+                        placeholder="https://scholar.google.com/..."
+                        className={`w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        ORCID ID / URL
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.orcid || ""}
+                        onChange={(e) => setFormData({ ...formData, orcid: e.target.value })}
+                        placeholder="0000-0002-..."
+                        className={`w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        ResearchGate URL
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.researchGateUrl || ""}
+                        onChange={(e) => setFormData({ ...formData, researchGateUrl: e.target.value })}
+                        placeholder="https://researchgate.net/..."
+                        className={`w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
                         LinkedIn Profile URL
                       </label>
                       <input
                         type="url"
-                        placeholder="https://linkedin.com/in/..."
                         value={formData.linkedinUrl || ""}
                         onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                        placeholder="https://linkedin.com/in/..."
+                        className={`w-full px-3 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Personal Website / Portfolio URL
-                    </label>
+            {/* 8. VISIBILITY & ORDER */}
+            {(editorSection === "all" || editorSection === "visibility") && (
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <Star className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className={`text-base font-bold ${headingText}`}>
+                      08. Profile Visibility &amp; Display Priority
+                    </h2>
+                    <p className={`text-xs ${subText}`}>
+                      Toggle active public status and manual ordering in team rosters.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Status Toggle */}
+                  <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
+                        Public Status
+                      </div>
+                      <p className={`text-[11px] ${subText} mt-1`}>
+                        Controls whether profile appears in public directory
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                      className={`w-full py-2.5 rounded-xl text-xs font-mono font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                        formData.isActive !== false
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      {formData.isActive !== false ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" /> ACTIVE IN PUBLIC ROSTER
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4" /> HIDDEN / INACTIVE
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Display Order Index */}
+                  <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
+                        Display Order Index
+                      </div>
+                      <p className={`text-[11px] ${subText} mt-1`}>
+                        Lower numbers (e.g. 1, 2) appear first in the directory
+                      </p>
+                    </div>
                     <input
-                      type="url"
-                      placeholder="https://mywebsite.org"
-                      value={formData.websiteUrl || ""}
-                      onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white"
+                      type="number"
+                      value={formData.orderIndex || 0}
+                      onChange={(e) => setFormData({ ...formData, orderIndex: parseInt(e.target.value) || 0 })}
+                      className={`w-full px-4 py-2 text-sm rounded-xl border outline-none transition ${inputBg}`}
                     />
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Modal Footer / Save */}
-              <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            {/* Bottom Save Action Bar */}
+            <div className={`p-5 rounded-3xl border flex items-center justify-between gap-4 ${cardBg}`}>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className={`px-5 py-2.5 text-xs font-semibold rounded-xl border transition ${
+                  isLight ? "border-slate-300 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                Cancel Changes
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] cursor-pointer"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving Profile...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>Save Researcher Profile</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* 2. RESEARCHERS DIRECTORY LIST VIEW                                        */
+        /* ========================================================================= */
+        <div className="space-y-6">
+          {/* Header & Action Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)] tracking-tight">
+                    Team &amp; Personnel Manager
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Create, edit, organize research hierarchy, and manage full academic profiles.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={loadData}
+                title="Refresh database"
+                className={`p-2.5 rounded-xl border transition-colors ${
+                  isLight ? "border-slate-200 hover:bg-slate-100 text-slate-600" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
+
+              <Link
+                href="/team"
+                target="_blank"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition border border-slate-200 dark:border-slate-700"
+              >
+                <span>View Public Team Page</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+
+              <button
+                onClick={handleOpenAdd}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold transition shadow-md shadow-emerald-950/20 active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Researcher</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Stats Overview Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className={`p-4 rounded-2xl border ${cardBg} space-y-1`}>
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Total Team
+              </span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
+                {totalCount}
+              </div>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                {activeCount} Active Members
+              </span>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${cardBg} space-y-1`}>
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" />
+                <span>Principal Inv.</span>
+              </span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
+                {piCount}
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                Lab Directorship
+              </span>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${cardBg} space-y-1`}>
+              <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1">
+                <Layers className="w-3 h-3" />
+                <span>Postdoc &amp; PhD</span>
+              </span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
+                {phdCount}
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                Researchers
+              </span>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${cardBg} space-y-1`}>
+              <span className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider flex items-center gap-1">
+                <BookOpen className="w-3 h-3" />
+                <span>M.Sc. Graduate</span>
+              </span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
+                {gradCount}
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                Thesis Candidates
+              </span>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${cardBg} space-y-1`}>
+              <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                <GraduationCap className="w-3 h-3" />
+                <span>Undergraduate</span>
+              </span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
+                {ugCount}
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                Honors &amp; Interns
+              </span>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${cardBg} space-y-1`}>
+              <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Alumni</span>
+              </span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-manrope)]">
+                {alumniCount}
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                Global Network
+              </span>
+            </div>
+          </div>
+
+          {/* Search & Filters Bar */}
+          <div className={`p-4 rounded-2xl border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 ${cardBg}`}>
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, role, email, thesis topic, or current institution..."
+                className={`w-full pl-9 pr-4 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+              />
+              {searchQuery && (
                 <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  Cancel
+                  <X className="w-3.5 h-3.5" />
                 </button>
+              )}
+            </div>
 
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className={`px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+              >
+                <option value="all">All Categories</option>
+                {Object.entries(TEAM_CATEGORIES_META).map(([k, meta]) => (
+                  <option key={k} value={k}>
+                    {meta.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className={`px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Members Table */}
+          <div className={`rounded-3xl border overflow-hidden ${cardBg}`}>
+            {isLoading ? (
+              <div className="p-12 text-center space-y-3">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-500 mx-auto" />
+                <p className={`text-xs ${subText}`}>Loading team database...</p>
+              </div>
+            ) : filteredMembers.length === 0 ? (
+              <div className="p-12 text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className={`text-base font-bold ${headingText}`}>No Researchers Found</h3>
+                  <p className={`text-xs ${subText} max-w-sm mx-auto mt-1`}>
+                    {searchQuery || categoryFilter !== "all"
+                      ? "No records match your active search filters. Try clearing filters."
+                      : "Start adding personnel by clicking '+ Add New Researcher'."}
+                  </p>
+                </div>
                 <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-extrabold transition shadow-md shadow-emerald-950/20 active:scale-95 cursor-pointer"
+                  onClick={handleOpenAdd}
+                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition"
                 >
-                  {saving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving Profile...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>{formData.id ? "Update Researcher" : "Create Researcher"}</span>
-                    </>
-                  )}
+                  + Add Researcher
                 </button>
               </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                    isLight ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-slate-900/60 border-slate-800 text-slate-400"
+                  }`}>
+                    <tr>
+                      <th className="py-3.5 px-4">Researcher Profile</th>
+                      <th className="py-3.5 px-3">Category</th>
+                      <th className="py-3.5 px-3">Thesis / Topic</th>
+                      <th className="py-3.5 px-3">Order</th>
+                      <th className="py-3.5 px-3">Status</th>
+                      <th className="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 font-medium">
+                    {filteredMembers.map((member) => {
+                      const catMeta = TEAM_CATEGORIES_META[member.category] || {
+                        label: member.category,
+                      };
+                      return (
+                        <tr
+                          key={member.id}
+                          className={`transition-colors ${
+                            isLight ? "hover:bg-slate-50/80" : "hover:bg-slate-800/40"
+                          }`}
+                        >
+                          {/* Profile */}
+                          <td className="py-4 px-4 max-w-md">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={
+                                  member.imageSrc ||
+                                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+                                }
+                                alt={member.name}
+                                className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                              />
+                              <div className="space-y-0.5 min-w-0">
+                                <div className={`font-bold text-sm ${headingText} flex items-center gap-2`}>
+                                  <span>{member.name}</span>
+                                  {member.slug && (
+                                    <Link
+                                      href={`/team/${member.slug}`}
+                                      target="_blank"
+                                      className="text-slate-400 hover:text-emerald-500"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </Link>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+                                  {member.role}
+                                </div>
+                                <div className={`text-[11px] truncate ${subText}`}>
+                                  {member.department || member.affiliation}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
 
-            </form>
+                          {/* Category */}
+                          <td className="py-4 px-3 whitespace-nowrap">
+                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              {catMeta.label}
+                            </span>
+                          </td>
 
+                          {/* Thesis / Topic */}
+                          <td className="py-4 px-3 max-w-xs">
+                            <div className={`text-[11px] truncate ${subText}`}>
+                              {member.thesisTopic ||
+                                member.mscThesis ||
+                                member.undergradThesis ||
+                                member.currentPosition ||
+                                "N/A"}
+                            </div>
+                          </td>
+
+                          {/* Order */}
+                          <td className="py-4 px-3 whitespace-nowrap">
+                            <span className="font-mono text-xs font-bold text-slate-500">
+                              #{member.orderIndex ?? 0}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-4 px-3 whitespace-nowrap">
+                            <button
+                              onClick={() => handleToggleActive(member)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition ${
+                                member.isActive !== false
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                                  : "bg-slate-200 dark:bg-slate-800 text-slate-500 hover:bg-slate-300"
+                              }`}
+                            >
+                              {member.isActive !== false ? "● Active" : "○ Inactive"}
+                            </button>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEdit(member)}
+                                className={`p-2 rounded-xl border transition ${
+                                  isLight
+                                    ? "border-slate-200 hover:bg-slate-100 text-slate-700"
+                                    : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                                }`}
+                                title="Edit researcher profile"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-emerald-500" />
+                              </button>
+
+                              <button
+                                onClick={() => setDeleteConfirmId(member.id)}
+                                className="p-2 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/10 transition"
+                                title="Delete researcher"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* 6. DELETE CONFIRMATION MODAL */}
-      {/* ============================================================ */}
+      {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 text-rose-500">
-              <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Delete Researcher Profile?
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`max-w-md w-full p-6 rounded-3xl border shadow-2xl space-y-4 ${cardBg}`}>
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete this team member? This action will remove their public profile and cannot be undone.
-            </p>
+            <div className="text-center space-y-1.5">
+              <h3 className={`text-base font-bold ${headingText}`}>Delete Researcher Record?</h3>
+              <p className={`text-xs ${subText}`}>
+                This will permanently remove the researcher profile and their thesis links from the laboratory roster.
+              </p>
+            </div>
 
-            <div className="pt-2 flex items-center justify-end gap-2.5">
+            <div className="grid grid-cols-2 gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className={`py-2.5 text-xs font-semibold rounded-xl border transition ${
+                  isLight ? "border-slate-300 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                }`}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => handleDelete(deleteConfirmId)}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-xs"
+                className="py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-500 rounded-xl transition cursor-pointer shadow-md shadow-red-600/20"
               >
-                Yes, Delete Researcher
+                Confirm Delete
               </button>
             </div>
           </div>

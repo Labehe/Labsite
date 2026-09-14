@@ -41,13 +41,13 @@ export default function HomePage() {
         <ResearchAreas areas={MOCK_RESEARCH_AREAS} />
 
         {/* 5. Completed & Flagship Projects Showcase */}
-        <FeaturedProject projects={MOCK_PROJECTS} />
+        <FeaturedProject />
 
         {/* 5b. Collaborating Institutions & Research Sponsors Ribbon */}
         <PartnersMarquee />
 
         {/* 6. Featured Publications */}
-        <FeaturedPublications publications={MOCK_PUBLICATIONS} />
+        <FeaturedPublications />
 
         {/* 7. Principal Investigator & Lab Director Spotlight */}
         <PrincipalInvestigator />

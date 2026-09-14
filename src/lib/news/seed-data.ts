@@ -9,7 +9,7 @@ export const SEED_NEWS_ARTICLES: NewsArticle[] = [
     summary: "Our aquatic ecotoxicology team reveals significant trophic magnification factors for micro-FTIR identified polymers across commercial estuarine species.",
     content: `### Executive Summary
 
-In our latest empirical investigation published in *Environmental Science & Technology*, researchers from the Environmental Health & Ecotoxicology Laboratory documented microplastic and nanoplastic bioaccumulation kinetics in 420 commercial teleost specimens collected across the lower Meghna River Estuary.
+In our latest empirical investigation published in *Environmental Science & Technology*, researchers from the Laboratory of Environmental Health and Ecotoxicology (LabEHE) documented microplastic and nanoplastic bioaccumulation kinetics in 420 commercial teleost specimens collected across the lower Meghna River Estuary.
 
 Using automated micro-FTIR focal plane array imaging coupled with Py-GC/MS, our team quantified mean gastrointestinal and hepatic loads of **5.8 ± 1.2 particles per individual**, with low-density polyethylene (LDPE) and polypropylene (PP) microfibers comprising over 74% of isolated particulate matter.
 
@@ -68,7 +68,7 @@ Our laboratory is currently expanding the monitoring framework to evaluate molec
     summary: "State-of-the-art analytical instrumentation expands laboratory capabilities to detect trace heavy metals and PFAS compounds at parts-per-trillion sensitivity.",
     content: `### Advanced Trace Element Infrastructure
 
-The Environmental Health & Ecotoxicology Laboratory has completed installation and ISO/IEC 17025 calibration of our next-generation **Inductively Coupled Plasma Mass Spectrometry (ICP-MS)** and **Thermal Desorption GC-MS/MS** research facility.
+The Laboratory of Environmental Health and Ecotoxicology (LabEHE) has completed installation and ISO/IEC 17025 calibration of our next-generation **Inductively Coupled Plasma Mass Spectrometry (ICP-MS)** and **Thermal Desorption GC-MS/MS** research facility.
 
 This multi-million infrastructure enhancement enables comprehensive isotopic fingerprinting and ultra-trace quantification of critical toxic elements including:
 
@@ -295,7 +295,7 @@ Synthesized from agricultural waste rice husks through low-oxygen pyrolysis, the
     summary: "Principal investigators discuss the ecological consequences of plastic additives in coastal marine life and policy recommendations for regional bans.",
     content: `### Scientific Evidence Informing Global Media & Public Policy
 
-The Environmental Health & Ecotoxicology Laboratory's recent findings on microplastic ingestion across estuarine food webs were featured in an in-depth investigative segment by **BBC World Service** and regional national broadcasters.
+The Laboratory of Environmental Health and Ecotoxicology (LabEHE)'s recent findings on microplastic ingestion across estuarine food webs were featured in an in-depth investigative segment by **BBC World Service** and regional national broadcasters.
 
 During the broadcast, our researchers highlighted the critical distinction between inert natural silt particles and manufactured polymers containing endocrine-disrupting plasticizers.
 
@@ -333,7 +333,7 @@ Following the broadcast, our laboratory submitted an official 24-page scientific
     summary: "Two fully-funded doctoral research studentships are open for applicants interested in microplastic bioaccumulation, nanoparticle imaging, and aquatic ecological risk modeling.",
     content: `### Fully Funded PhD Studentships (2026–2028)
 
-The Environmental Health & Ecotoxicology Laboratory invites ambitious, high-achieving graduate researchers to apply for two fully-funded **Doctoral Research Fellowships** starting in Autumn 2026.
+The Laboratory of Environmental Health and Ecotoxicology (LabEHE) invites ambitious, high-achieving graduate researchers to apply for two fully-funded **Doctoral Research Fellowships** starting in Autumn 2026.
 
 These positions are funded through the UNEP and National Science Foundation collaborative grant, providing a full tuition waiver, comprehensive health coverage, and an annual living stipend of **$32,000 USD** with dedicated research travel allowances.
 

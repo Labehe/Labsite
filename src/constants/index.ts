@@ -1,14 +1,15 @@
 import type { NavItem } from "@/types";
 
 export const SITE_CONFIG = {
-  name: "Environmental Health & Ecotoxicology Laboratory",
-  shortName: "Ecotox Lab",
+  name: "Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
+  shortName: "LabEHE",
+  fullName: "Laboratory of Environmental Health and Ecotoxicology",
   tagline: "Understanding Environmental Risks. Protecting Health.",
   description:
     "An international academic research laboratory investigating environmental contaminants, exposure pathways, biological responses, and implications for ecosystem and human health.",
   institution: "Jahangirnagar University",
   location: "Dept. of Environmental Sciences, Jahangirnagar University, Savar, Dhaka-1342",
-  email: "contact@ecotox-lab.org",
+  email: "contact@labehe.org",
   phone: "+880 2-7791045",
 };
 
@@ -19,6 +20,7 @@ export const PUBLIC_NAV_ITEMS: NavItem[] = [
   { label: "Team", href: "/team" },
   { label: "News & Insights", href: "/news" },
   { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export const ADMIN_NAV_ITEMS = [

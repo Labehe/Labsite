@@ -157,32 +157,60 @@ export function Hero({ data }: HeroProps) {
       : ARC_NODES;
 
   const [activeStage, setActiveStage] = React.useState(0);
+  const [direction, setDirection] = React.useState<1 | -1>(1);
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
   const [progress, setProgress] = React.useState(0);
 
-  const SLIDE_DURATION = (landingData.hero?.slideDurationSeconds || 3.8) * 1000;
-  const INTERVAL_STEP = 40;
+  const durationSec = landingData.hero?.slideDurationSeconds || 4;
+  const slideDurationMs = durationSec * 1000;
 
-  // Auto-advancing Slideshow Timer with Progress Bar (pauses only when actively inspecting a node)
+  // Auto-advancing Slideshow Timer with smooth deterministic Ping-Pong Progression (1 → 2 → 3 → 4 → 3 → 2 → 1)
   React.useEffect(() => {
     if (hoveredNodeId) return;
 
+    const startTime = Date.now();
+    const intervalMs = 25; // 40fps smooth bar progress
+
     const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          setActiveStage((curr) => (curr + 1) % currentStages.length);
-          return 0;
-        }
-        return prev + (INTERVAL_STEP / SLIDE_DURATION) * 100;
-      });
-    }, INTERVAL_STEP);
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, (elapsed / slideDurationMs) * 100);
+      setProgress(pct);
+
+      if (elapsed >= slideDurationMs) {
+        clearInterval(timer);
+        setProgress(0);
+        setActiveStage((curr) => {
+          const total = currentStages.length;
+          if (total <= 1) return 0;
+
+          if (direction === 1) {
+            if (curr >= total - 1) {
+              setDirection(-1);
+              return Math.max(0, total - 2);
+            }
+            return curr + 1;
+          } else {
+            if (curr <= 0) {
+              setDirection(1);
+              return Math.min(total - 1, 1);
+            }
+            return curr - 1;
+          }
+        });
+      }
+    }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [hoveredNodeId, activeStage, currentStages.length, SLIDE_DURATION]);
+  }, [activeStage, direction, hoveredNodeId, slideDurationMs, currentStages.length]);
 
   const selectStage = (index: number) => {
     setActiveStage(index);
     setProgress(0);
+    if (index >= currentStages.length - 1) {
+      setDirection(-1);
+    } else if (index <= 0) {
+      setDirection(1);
+    }
   };
 
   const stage = currentStages[activeStage % currentStages.length] || currentStages[0];

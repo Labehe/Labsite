@@ -7,11 +7,11 @@ import { getPublishedProjects, getProjectStats, getResearchAreas } from "@/lib/p
 import { Loader2 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Research Projects & Grants | Environmental Health & Ecotoxicology Laboratory",
+  title: "Research Projects & Grants | Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
   description:
     "Explore active and completed research projects on environmental pollutants, microplastics, heavy metals, toxicogenomics, and ecosystem risk assessment.",
   openGraph: {
-    title: "Research Projects | Environmental Health & Ecotoxicology Laboratory",
+    title: "Research Projects | Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
     description:
       "Turning environmental questions into rigorous scientific evidence through laboratory analysis and longitudinal field investigations.",
     images: [

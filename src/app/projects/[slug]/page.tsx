@@ -26,18 +26,18 @@ export async function generateMetadata({ params }: ProjectDetailPageProps): Prom
   const resolvedParams = await Promise.resolve(params);
   const slug = resolvedParams?.slug;
   if (!slug) {
-    return { title: "Research Project | Environmental Health & Ecotoxicology Laboratory" };
+    return { title: "Research Project | Laboratory of Environmental Health and Ecotoxicology (LabEHE)" };
   }
   const project = await getProjectBySlug(slug, false);
 
   if (!project) {
     return {
-      title: "Project Not Found | Environmental Health & Ecotoxicology Laboratory",
+      title: "Project Not Found | Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
     };
   }
 
   return {
-    title: `${project.title} | Environmental Health & Ecotoxicology Laboratory`,
+    title: `${project.title} | Laboratory of Environmental Health and Ecotoxicology (LabEHE)`,
     description: project.short_description,
     openGraph: {
       title: project.title,

@@ -6,10 +6,12 @@ import { Building2, Globe2, Sparkles, ShieldCheck, Microscope, Award } from "luc
 interface Partner {
   id: string;
   name: string;
-  shortName: string;
+  shortName?: string;
   type: string;
   badge: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }>;
+  logoUrl?: string;
+  websiteUrl?: string;
 }
 
 const PARTNERS: Partner[] = [
@@ -85,10 +87,18 @@ export function PartnersMarquee() {
   const landingData = useLandingData();
   const [isPaused, setIsPaused] = React.useState(false);
 
+  // Combine dynamic partners from landingData (or fallback to seed)
+  const activePartners = React.useMemo(() => {
+    if (landingData.partnersSection?.partners && landingData.partnersSection.partners.length > 0) {
+      return landingData.partnersSection.partners;
+    }
+    return PARTNERS;
+  }, [landingData.partnersSection?.partners]);
+
   // Triple duplicate for seamless infinite ribbon
   const marqueePartners = React.useMemo(() => {
-    return [...PARTNERS, ...PARTNERS, ...PARTNERS];
-  }, []);
+    return [...activePartners, ...activePartners, ...activePartners];
+  }, [activePartners]);
 
   return (
     <section className="py-14 sm:py-16 bg-[#F4F8F5] dark:bg-[#0B1120] border-y border-slate-200/80 dark:border-slate-800 relative overflow-hidden transition-colors duration-300 w-full">
@@ -107,7 +117,6 @@ export function PartnersMarquee() {
         </p>
       </div>
 
-
       {/* Edge-to-Edge Moving Marquee */}
       <div
         className="relative w-full overflow-hidden py-2 group"
@@ -124,30 +133,26 @@ export function PartnersMarquee() {
           style={{ animationPlayState: isPaused ? "paused" : "running" }}
         >
           {marqueePartners.map((partner, index) => {
-            const Icon = partner.icon;
             return (
               <div
                 key={`${partner.id}-${index}`}
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
-                className="flex-shrink-0 flex items-center gap-3.5 px-5 sm:px-6 py-3.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-[#10B981] dark:hover:border-[#10B981] transition-all duration-300 group/partner cursor-default"
+                title={partner.name}
+                className="flex-shrink-0 h-16 sm:h-20 min-w-[140px] sm:min-w-[170px] max-w-[220px] px-5 sm:px-7 py-3 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg hover:border-emerald-500 dark:hover:border-emerald-500 flex items-center justify-center transition-all duration-300 group/partner cursor-default"
               >
-                <div className="w-10 h-10 rounded-xl bg-[#E8F5EE] dark:bg-emerald-950/80 text-[#047857] dark:text-[#34D399] flex items-center justify-center font-bold flex-shrink-0 group-hover/partner:scale-105 transition-transform">
-                  <Icon className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <div className="flex flex-col text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs sm:text-sm text-[#082817] dark:text-white leading-tight group-hover/partner:text-[#047857] dark:group-hover/partner:text-[#34D399] transition-colors">
-                      {partner.name}
-                    </span>
-                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-black/50 text-slate-600 dark:text-emerald-300 border border-slate-200/60 dark:border-emerald-800/40">
-                      {partner.badge}
-                    </span>
+                {partner.logoUrl ? (
+                  <img
+                    src={partner.logoUrl}
+                    alt={partner.name}
+                    className="h-9 sm:h-12 w-auto max-w-full object-contain filter contrast-[1.05] group-hover/partner:scale-105 transition-all duration-300"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 group-hover/partner:text-emerald-500 transition-colors whitespace-nowrap">
+                    <Building2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span>{partner.name}</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    {partner.type}
-                  </span>
-                </div>
+                )}
               </div>
             );
           })}

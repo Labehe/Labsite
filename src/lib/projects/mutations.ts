@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ProjectFormData, ProjectStatus, ProjectWithRelations } from "./types";
 import { getLocalProjects, saveLocalProjects } from "./queries";
 import { SEED_RESEARCH_AREAS, SEED_RESEARCHERS } from "./seed-data";
+import { getAllResearchAreas } from "@/lib/research-areas/store";
 
 /**
  * Upload an image to Supabase Storage 'project-media' bucket
@@ -139,7 +140,8 @@ export async function createProject(formData: ProjectFormData): Promise<ProjectW
   }
 
   // Update local memory and localStorage store
-  const matchedAreas = SEED_RESEARCH_AREAS.filter((a) => formData.research_area_ids.includes(a.id));
+  const allAreas = getAllResearchAreas();
+  const matchedAreas = allAreas.filter((a) => formData.research_area_ids.includes(a.id));
   const matchedResearchers = formData.researcher_assignments.map((ra) => {
     const found = SEED_RESEARCHERS.find((p) => p.id === ra.person_id);
     return {
@@ -240,11 +242,12 @@ export async function updateProject(
         })
       : existing[index].researchers;
 
+    const allAreas = getAllResearchAreas();
     const updated = {
       ...existing[index],
       ...updatePayload,
       research_areas: formData.research_area_ids
-        ? SEED_RESEARCH_AREAS.filter((a) => formData.research_area_ids?.includes(a.id))
+        ? allAreas.filter((a) => formData.research_area_ids?.includes(a.id))
         : existing[index].research_areas,
       researchers: matchedResearchers,
       collaborators: formData.collaborators !== undefined ? formData.collaborators : existing[index].collaborators,

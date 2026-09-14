@@ -43,6 +43,8 @@ export interface LandingContentData {
     badge: string;
     title: string;
     subtitle: string;
+    shuffleViewMode?: boolean;
+    defaultViewMode?: "deck" | "radial" | "grid";
   };
   projectsSection: {
     badge: string;
@@ -52,6 +54,16 @@ export interface LandingContentData {
   partnersSection: {
     badge: string;
     title: string;
+    subtitle?: string;
+    partners?: Array<{
+      id: string;
+      name: string;
+      shortName?: string;
+      type: string;
+      badge: string;
+      logoUrl?: string;
+      websiteUrl?: string;
+    }>;
   };
   publicationsSection: {
     badge: string;
@@ -65,7 +77,9 @@ export interface LandingContentData {
     institution: string;
     bioQuote: string;
     publicationsCount: string;
-    grantsCount: string;
+    citationsCount?: string;
+    hIndex?: string;
+    grantsCount?: string;
     imageSrc: string;
     scholarUrl: string;
     researchgateUrl: string;
@@ -74,6 +88,8 @@ export interface LandingContentData {
     badge: string;
     title: string;
     subtitle: string;
+    autoSlideSeconds?: number;
+    enableShuffle?: boolean;
   };
   newsSection: {
     badge: string;
@@ -107,6 +123,50 @@ export interface LandingContentData {
     hours: string;
     mapEmbedUrl: string;
     aerialImageSrc: string;
+  };
+  aboutPage?: {
+    hero: {
+      badge: string;
+      headline: string;
+      supportingText: string;
+      backgroundImageUrl: string;
+      metrics: Array<{ label: string }>;
+    };
+    whoWeAre: {
+      badge: string;
+      headlinePrefix: string;
+      headlineHighlight: string;
+      paragraph1: string;
+      paragraph2: string;
+      rigorTitle: string;
+      rigorText: string;
+      policyTitle: string;
+      policyText: string;
+      imageSrc: string;
+      imageCaptionBadge: string;
+      imageCaptionTitle: string;
+      imageCaptionSubtitle: string;
+    };
+    milestones: Array<{
+      year: string;
+      title: string;
+      badge: string;
+      desc: string;
+    }>;
+    galleryImages: Array<{
+      title: string;
+      category: string;
+      image: string;
+    }>;
+    cta: {
+      badge: string;
+      headline: string;
+      description: string;
+      primaryBtnText: string;
+      primaryBtnHref: string;
+      secondaryBtnText: string;
+      secondaryBtnHref: string;
+    };
   };
   footer: {
     labName: string;
@@ -240,6 +300,8 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
     title: "What We Study",
     subtitle:
       "Our research spans four interconnected domains addressing chemical persistence, biological uptake, organismal impact, and human community risk.",
+    shuffleViewMode: true,
+    defaultViewMode: "deck",
   },
   projectsSection: {
     badge: "FLAGSHIP RESEARCH",
@@ -249,6 +311,73 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
   partnersSection: {
     badge: "INSTITUTIONAL NETWORK",
     title: "Collaborating Institutions & Research Sponsors",
+    subtitle: "Partnering with leading ministries, academic councils, and international environmental organizations",
+    partners: [
+      {
+        id: "p-ju",
+        name: "Jahangirnagar University",
+        shortName: "JU Environmental Sciences",
+        type: "Host Academic Institution",
+        badge: "HOST",
+        logoUrl: "",
+      },
+      {
+        id: "p-doe",
+        name: "Department of Environment (DoE)",
+        shortName: "Ministry of Env & Climate",
+        type: "Government Regulatory Partner",
+        badge: "GOVERNMENT",
+        logoUrl: "",
+      },
+      {
+        id: "p-bcsir",
+        name: "BCSIR Research Laboratories",
+        shortName: "National Science Council",
+        type: "Analytical Research Alliance",
+        badge: "ALLIANCE",
+        logoUrl: "",
+      },
+      {
+        id: "p-unep",
+        name: "United Nations Environment (UNEP)",
+        shortName: "UNEP Global Chemicals",
+        type: "International Agency",
+        badge: "GLOBAL",
+        logoUrl: "",
+      },
+      {
+        id: "p-who",
+        name: "World Health Organization",
+        shortName: "WHO Environmental Health",
+        type: "Health Risk Working Group",
+        badge: "GLOBAL",
+        logoUrl: "",
+      },
+      {
+        id: "p-jica",
+        name: "JICA Environmental Science",
+        shortName: "Japan International Agency",
+        type: "Bilateral Grant Sponsor",
+        badge: "GRANT SPONSOR",
+        logoUrl: "",
+      },
+      {
+        id: "p-icimod",
+        name: "ICIMOD Watershed Network",
+        shortName: "Regional Mountain & River Alliance",
+        type: "Regional Ecological Partner",
+        badge: "REGIONAL",
+        logoUrl: "",
+      },
+      {
+        id: "p-nsf",
+        name: "Global Toxicology Research Network",
+        shortName: "International Science Consortium",
+        type: "Joint Grant Consortium",
+        badge: "CONSORTIUM",
+        logoUrl: "",
+      },
+    ],
   },
   publicationsSection: {
     badge: "PEER-REVIEWED EVIDENCE",
@@ -257,22 +386,25 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
       "Recent scientific breakthroughs published in high-impact environmental toxicology and public health journals.",
   },
   piSection: {
-    name: "Dr. Mohammad S. Kabir",
+    name: "Prof. Dr. Md. Mostafizur Rahman",
     designation: "Professor & Principal Investigator",
     department: "Department of Environmental Sciences",
     institution: "Jahangirnagar University",
     bioQuote:
-      "Our mission is to unravel the intricate mechanisms of environmental contaminants and translate rigorous experimental toxicology into actionable ecological conservation and community health protection.",
-    publicationsCount: "68+ Papers",
-    grantsCount: "14 Funded Grants",
-    imageSrc: "/images/hero-scientist.jpg",
-    scholarUrl: "https://scholar.google.com",
-    researchgateUrl: "https://researchgate.net",
+      "Our mission is to translate high-resolution molecular and environmental data into actionable ecological safety thresholds and evidence-based public health protections.",
+    publicationsCount: "74+",
+    citationsCount: "2,840+",
+    hIndex: "26",
+    imageSrc: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80",
+    scholarUrl: "https://scholar.google.com/citations?user=example-rahman",
+    researchgateUrl: "https://www.researchgate.net/profile/Mostafizur-Rahman",
   },
   peopleSection: {
     badge: "LAB ROSTER",
     title: "Meet the Researchers",
     subtitle: "The multidisciplinary faculty, doctoral scholars, and students advancing environmental health science.",
+    autoSlideSeconds: 4,
+    enableShuffle: true,
   },
   newsSection: {
     badge: "LAB DISPATCHES",
@@ -298,19 +430,120 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
     badge: "CAMPUS LOCATION & INQUIRIES",
     title: "Reach our research team.",
     subtitle: "Located at Jahangirnagar University campus in Savar, Dhaka. Whether inquiring about collaborative grant proposals, sample submission protocols, postdoctoral opportunities, or graduate admissions, our scientific team is ready to connect.",
-    facilityName: "Environmental Health & Ecotoxicology Lab",
+    facilityName: "Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
     address: "Department of Environmental Sciences, Jahangirnagar University, Savar, Dhaka-1342, Bangladesh",
     gpsCoordinates: "23.8824° N, 90.2671° E",
     email: "ecotox@juniv.edu",
     phone: "+880 2-7791045 Ext. 1420",
     hours: "Sunday – Thursday: 9:00 AM – 5:00 PM (GMT+6)",
     mapEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3648.5146059902644!2d90.26458537604313!3d23.882434583995834!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755e9999407e997%3A0x868b4f17849e7799!2sJahangirnagar%20University!5e0!3m2!1sen!2sbd!4v1710000000000!5m2!1sen!2sbd",
-    aerialImageSrc: "/images/jahangirnagar-campus-map.jpg",
+    aerialImageSrc: "/images/jahangirnagar-campus.jpg",
+  },
+  aboutPage: {
+    hero: {
+      badge: "ABOUT THE LAB",
+      headline: "Science with purpose.",
+      supportingText: "Department of Environmental Sciences • Jahangirnagar University, Savar, Dhaka",
+      backgroundImageUrl: "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=2200&q=90",
+      metrics: [
+        { label: "15+ Years Active Research" },
+        { label: "140+ Peer-Reviewed Papers" },
+        { label: "5,000+ Citations" },
+      ],
+    },
+    whoWeAre: {
+      badge: "WHO WE ARE",
+      headlinePrefix: "Understanding the environment.",
+      headlineHighlight: "Protecting what depends on it.",
+      paragraph1: "Based within the biodiverse wetland ecosystem of Jahangirnagar University in Savar, Dhaka, our laboratory is an interdisciplinary research community investigating the unseen chemistry of environmental pollution.",
+      paragraph2: "We track persistent contaminants, microplastics, endocrine disruptors, and trace metals across river sediment cores, agricultural soils, aquatic food webs, and human cell lines to generate actionable scientific evidence.",
+      rigorTitle: "Empirical Rigor",
+      rigorText: "ISO/EPA benchmarked analytical methods with certified standards and ultra-trace limits.",
+      policyTitle: "Policy Translation",
+      policyText: "Translating lab discoveries into environmental guidelines and public health protection.",
+      imageSrc: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80",
+      imageCaptionBadge: "DEPARTMENT OF ENVIRONMENTAL SCIENCES",
+      imageCaptionTitle: "Faculty of Mathematical & Physical Sciences",
+      imageCaptionSubtitle: "Jahangirnagar University Campus, Savar, Dhaka-1342, Bangladesh.",
+    },
+    milestones: [
+      {
+        year: "2019",
+        title: "Microplastics Cleanroom Inception",
+        badge: "Spectroscopy Hub",
+        desc: "Established micro-FTIR chemical imaging facility for microplastic debris mapping in deltaic food webs.",
+      },
+      {
+        year: "2021",
+        title: "Molecular Ecotoxicology Expansion",
+        badge: "Cellular Bioassays",
+        desc: "Integrated mammalian in-vitro assays and flow cytometry to evaluate cellular oxidative stress.",
+      },
+      {
+        year: "2023",
+        title: "Delta-Scale GIS & Remote Sensing",
+        badge: "Spatial Modeling",
+        desc: "Deployed Sentinel-2 multi-spectral satellite pipelines and watershed hydrodynamic contaminant flow tracking.",
+      },
+      {
+        year: "2025",
+        title: "Autonomous Telemetry & Circular Systems",
+        badge: "In-Situ Sensing",
+        desc: "Developed real-time autonomous water quality monitoring sondes and catalytic nutrient recovery frameworks.",
+      },
+      {
+        year: "2026",
+        title: "Global Consortia & Policy Leadership",
+        badge: "Active Milestone",
+        desc: "Over 140+ peer-reviewed papers and 5,000+ citations, spearheading regional environmental health resilience.",
+      },
+    ],
+    galleryImages: [
+      {
+        title: "Ultra-Trace Spectrometry Cleanroom",
+        category: "Analytical Facility",
+        image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+      },
+      {
+        title: "Microscopic Imaging & Micro-FTIR",
+        category: "Polymer Analysis",
+        image: "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=800&q=80",
+      },
+      {
+        title: "Cellular Bioassay & Toxicogenomics",
+        category: "Biological Exposure",
+        image: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80",
+      },
+      {
+        title: "Delta River Sediment Coring",
+        category: "Field Expedition",
+        image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80",
+      },
+      {
+        title: "Environmental GIS & Hydrodynamics",
+        category: "Geocomputation",
+        image: "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80",
+      },
+      {
+        title: "Circular Bioremediation Cleanroom",
+        category: "Resource Recovery",
+        image: "https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=800&q=80",
+      },
+    ],
+    cta: {
+      badge: "ENGAGE WITH OUR WORK",
+      headline: "Curious About Environmental Research?",
+      description: "Whether you are an aspiring researcher interested in graduate thesis opportunities, a researcher seeking collaborative projects, or an agency in need of empirical data—our doors are open.",
+      primaryBtnText: "Explore Opportunities",
+      primaryBtnHref: "/team#opportunities",
+      secondaryBtnText: "Contact Lab",
+      secondaryBtnHref: "/contact",
+    },
   },
   footer: {
-    labName: "Environmental Health & Ecotoxicology Laboratory",
+    labName: "Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
     description: "Department of Environmental Sciences, Jahangirnagar University. Dedicated to understanding chemical fate, ecological vulnerabilities, and safeguarding human health through evidence-based science.",
-    copyrightText: "© 2026 Environmental Health & Ecotoxicology Laboratory. Jahangirnagar University. All rights reserved.",
+    copyrightText: "© 2026 Laboratory of Environmental Health and Ecotoxicology (LabEHE). Jahangirnagar University. All rights reserved.",
   },
 };
 

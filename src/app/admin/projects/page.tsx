@@ -40,7 +40,7 @@ import {
   ExternalLink,
   Camera
 } from "lucide-react";
-import { ProjectWithRelations, ProjectStatus, ProjectFormData } from "@/lib/projects/types";
+import { ProjectWithRelations, ProjectStatus, ProjectFormData, ProjectResearchArea } from "@/lib/projects/types";
 import { getPublishedProjects, getResearchAreas } from "@/lib/projects/queries";
 import {
   createProject,
@@ -51,15 +51,42 @@ import {
   uploadProjectMedia,
 } from "@/lib/projects/mutations";
 import { SEED_RESEARCH_AREAS, SEED_RESEARCHERS } from "@/lib/projects/seed-data";
+import {
+  getAllResearchAreas,
+  createResearchArea,
+  updateResearchArea,
+  deleteResearchArea,
+} from "@/lib/research-areas/store";
+import { getTeamMembers, saveTeamMember } from "@/lib/team/store";
+import { TeamMember, TeamCategory } from "@/lib/team/types";
 
 export default function AdminProjectsPage() {
   const { theme } = useAdminTheme();
   const isLight = theme === "light";
 
   const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
-  const [researchAreas, setResearchAreas] = useState(SEED_RESEARCH_AREAS);
+  const [researchAreas, setResearchAreas] = useState<ProjectResearchArea[]>(getAllResearchAreas());
+  const [teamResearchers, setTeamResearchers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+
+  // Dynamic Thematic Research Focus Areas
+  const [showNewAreaForm, setShowNewAreaForm] = useState(false);
+  const [newAreaTitle, setNewAreaTitle] = useState("");
+  const [newAreaDesc, setNewAreaDesc] = useState("");
+  const [creatingArea, setCreatingArea] = useState(false);
+  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
+  const [editAreaTitle, setEditAreaTitle] = useState("");
+  const [editAreaDesc, setEditAreaDesc] = useState("");
+  const [savingAreaEdit, setSavingAreaEdit] = useState(false);
+
+  // Dynamic Researcher inline addition
+  const [showNewResearcherForm, setShowNewResearcherForm] = useState(false);
+  const [newResearcherName, setNewResearcherName] = useState("");
+  const [newResearcherRole, setNewResearcherRole] = useState("Research Fellow");
+  const [newResearcherCategory, setNewResearcherCategory] = useState<TeamCategory>("graduate");
+  const [newResearcherAffiliation, setNewResearcherAffiliation] = useState("Jahangirnagar University");
+  const [creatingResearcher, setCreatingResearcher] = useState(false);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,16 +140,35 @@ export default function AdminProjectsPage() {
 
   const [formData, setFormData] = useState<ProjectFormData>(initialFormState);
 
-  // Load Projects from DB / Access layer
+  // Dynamically combined researchers list (prefer real team roster + fallback seed)
+  const combinedResearchers = React.useMemo(() => {
+    if (teamResearchers.length === 0) {
+      return SEED_RESEARCHERS;
+    }
+    const teamMapped = teamResearchers.map((m) => ({
+      id: m.id,
+      name: m.name,
+      slug: m.slug,
+      position: m.role || "Researcher",
+      photo_url: m.imageSrc || null,
+    }));
+    // include any seed researchers that might be referenced in older records
+    const teamIds = new Set(teamMapped.map((t) => t.id));
+    const missingSeeds = SEED_RESEARCHERS.filter((s) => !teamIds.has(s.id));
+    return [...teamMapped, ...missingSeeds];
+  }, [teamResearchers]);
+
+  // Load Projects & Team from DB / Access layer
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [allProjects, areas] = await Promise.all([
+      const [allProjects, teamList] = await Promise.all([
         getPublishedProjects({}, true), // includeDrafts = true
-        getResearchAreas(),
+        getTeamMembers(),
       ]);
       setProjects(allProjects);
-      setResearchAreas(areas);
+      setTeamResearchers(teamList);
+      setResearchAreas(getAllResearchAreas());
     } catch (err) {
       console.error("Error loading admin projects:", err);
     } finally {
@@ -133,10 +179,23 @@ export default function AdminProjectsPage() {
   useEffect(() => {
     loadData();
 
-    // Listen to local project updates across browser tabs
+    // Listen to local project, research area, and team updates across browser tabs
     const handleUpdate = () => loadData();
+    const handleAreasUpdate = () => setResearchAreas(getAllResearchAreas());
+    const handleTeamUpdate = async () => {
+      const refreshed = await getTeamMembers();
+      setTeamResearchers(refreshed);
+    };
+
     window.addEventListener("lab_projects_updated", handleUpdate);
-    return () => window.removeEventListener("lab_projects_updated", handleUpdate);
+    window.addEventListener("lab_research_areas_updated", handleAreasUpdate);
+    window.addEventListener("lab_team_updated", handleTeamUpdate);
+
+    return () => {
+      window.removeEventListener("lab_projects_updated", handleUpdate);
+      window.removeEventListener("lab_research_areas_updated", handleAreasUpdate);
+      window.removeEventListener("lab_team_updated", handleTeamUpdate);
+    };
   }, []);
 
   // Filtered projects
@@ -261,6 +320,130 @@ export default function AdminProjectsPage() {
       setStatusNotification({ type: "error", message: `Failed to upload gallery photo 0${index + 1}.` });
     } finally {
       setUploadingGalleryIndex(null);
+    }
+  };
+
+  // Create New Thematic Research Area / Focus Pillar Inline
+  const handleCreateNewArea = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newAreaTitle.trim()) {
+      setStatusNotification({ type: "error", message: "Please enter a title for the new research pillar." });
+      return;
+    }
+    setCreatingArea(true);
+    try {
+      const created = await createResearchArea(newAreaTitle, newAreaDesc);
+      const updatedAreas = getAllResearchAreas();
+      setResearchAreas(updatedAreas);
+      setFormData((prev) => ({
+        ...prev,
+        research_area_ids: [...(prev.research_area_ids || []), created.id],
+      }));
+      setNewAreaTitle("");
+      setNewAreaDesc("");
+      setShowNewAreaForm(false);
+      setStatusNotification({
+        type: "success",
+        message: `✨ Created and tagged new research focus pillar: "${created.title}"!`,
+      });
+    } catch (err: any) {
+      setStatusNotification({ type: "error", message: err.message || "Failed to create research pillar." });
+    } finally {
+      setCreatingArea(false);
+    }
+  };
+
+  // Start editing a research area
+  const handleStartEditArea = (area: ProjectResearchArea, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingAreaId(area.id);
+    setEditAreaTitle(area.title);
+    setEditAreaDesc(area.description || "");
+  };
+
+  // Save edited research area
+  const handleSaveEditArea = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAreaId || !editAreaTitle.trim()) return;
+    setSavingAreaEdit(true);
+    try {
+      await updateResearchArea(editingAreaId, {
+        title: editAreaTitle.trim(),
+        description: editAreaDesc.trim(),
+      });
+      const updatedAreas = getAllResearchAreas();
+      setResearchAreas(updatedAreas);
+      setEditingAreaId(null);
+      setStatusNotification({
+        type: "success",
+        message: `✨ Research focus pillar updated successfully!`,
+      });
+    } catch (err: any) {
+      setStatusNotification({ type: "error", message: "Failed to update pillar: " + (err.message || String(err)) });
+    } finally {
+      setSavingAreaEdit(false);
+    }
+  };
+
+  // Delete research area
+  const handleDeleteArea = async (areaId: string, areaTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to remove the research pillar "${areaTitle}"?`)) return;
+    try {
+      await deleteResearchArea(areaId);
+      const updatedAreas = getAllResearchAreas();
+      setResearchAreas(updatedAreas);
+      setFormData((prev) => ({
+        ...prev,
+        research_area_ids: (prev.research_area_ids || []).filter((id) => id !== areaId),
+      }));
+      if (editingAreaId === areaId) setEditingAreaId(null);
+      setStatusNotification({
+        type: "success",
+        message: `Removed research pillar "${areaTitle}".`,
+      });
+    } catch (err: any) {
+      setStatusNotification({ type: "error", message: "Failed to delete pillar: " + (err.message || String(err)) });
+    }
+  };
+
+  // Quick inline researcher creation
+  const handleCreateNewResearcher = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newResearcherName.trim()) {
+      setStatusNotification({ type: "error", message: "Please enter researcher's full name." });
+      return;
+    }
+    setCreatingResearcher(true);
+    try {
+      const created = await saveTeamMember({
+        name: newResearcherName.trim(),
+        role: newResearcherRole.trim() || "Research Fellow",
+        category: newResearcherCategory,
+        affiliation: newResearcherAffiliation.trim() || "Jahangirnagar University",
+        department: "Department of Environmental Sciences",
+      });
+      const refreshed = await getTeamMembers();
+      setTeamResearchers(refreshed);
+      setFormData((prev) => ({
+        ...prev,
+        researcher_assignments: [
+          ...prev.researcher_assignments,
+          { person_id: created.id, role_in_project: newResearcherRole || "Researcher" },
+        ],
+      }));
+      setNewResearcherName("");
+      setNewResearcherRole("Research Fellow");
+      setShowNewResearcherForm(false);
+      window.dispatchEvent(new CustomEvent("lab_team_updated"));
+      setStatusNotification({
+        type: "success",
+        message: `✨ Added "${created.name}" to team and assigned to project!`,
+      });
+    } catch (err: any) {
+      setStatusNotification({ type: "error", message: "Failed to add researcher: " + (err.message || String(err)) });
+    } finally {
+      setCreatingResearcher(false);
     }
   };
 
@@ -703,27 +886,146 @@ export default function AdminProjectsPage() {
             {/* 3. PERSONNEL & COLLABORATING PARTNERS */}
             {(editorSection === "all" || editorSection === "people") && (
               <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                    <Users className="w-5 h-5" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className={`text-base font-bold ${headingText}`}>
+                        03. Personnel &amp; Global Collaborators
+                      </h2>
+                      <p className={`text-xs ${subText}`}>
+                        Lab investigators assigned to project and collaborating institutional partners.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className={`text-base font-bold ${headingText}`}>
-                      03. Personnel &amp; Global Collaborators
-                    </h2>
-                    <p className={`text-xs ${subText}`}>
-                      Lab investigators assigned to project and collaborating institutional partners.
-                    </p>
-                  </div>
+
+                  {/* Inline Add New Team Member Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowNewResearcherForm(!showNewResearcherForm)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 transition cursor-pointer self-start sm:self-auto"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Quick Add New Researcher</span>
+                  </button>
                 </div>
+
+                {/* Inline New Researcher Creator Form */}
+                {showNewResearcherForm && (
+                  <div
+                    className={`p-5 rounded-2xl border space-y-4 animate-in fade-in duration-200 ${
+                      isLight ? "bg-emerald-50/50 border-emerald-200" : "bg-emerald-950/20 border-emerald-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-500" />
+                        <span className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                          Add New Lab Personnel to Roster
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewResearcherForm(false)}
+                        className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      <div className="sm:col-span-2">
+                        <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={newResearcherName}
+                          onChange={(e) => setNewResearcherName(e.target.value)}
+                          placeholder="e.g. Dr. Farzana Rahman"
+                          className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                          Designation / Role
+                        </label>
+                        <input
+                          type="text"
+                          value={newResearcherRole}
+                          onChange={(e) => setNewResearcherRole(e.target.value)}
+                          placeholder="e.g. Postdoctoral Fellow"
+                          className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                          Roster Category
+                        </label>
+                        <select
+                          value={newResearcherCategory}
+                          onChange={(e) => setNewResearcherCategory(e.target.value as TeamCategory)}
+                          className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                        >
+                          <option value="pi">Principal Investigator</option>
+                          <option value="phd">Postdoc &amp; PhD Researchers</option>
+                          <option value="graduate">Graduate Researchers</option>
+                          <option value="undergraduate">Undergraduate Researchers</option>
+                          <option value="alumni">Lab Alumni</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewResearcherForm(false)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition ${
+                          isLight
+                            ? "border-slate-300 hover:bg-slate-100 text-slate-700"
+                            : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                        }`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCreateNewResearcher()}
+                        disabled={creatingResearcher || !newResearcherName.trim()}
+                        className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition shadow-sm cursor-pointer flex items-center gap-1.5"
+                      >
+                        {creatingResearcher ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Adding to Roster...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Add &amp; Assign to Project</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-6">
                   {/* Researcher Assignment */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
-                        Lab Researchers &amp; Investigators
-                      </label>
+                      <div>
+                        <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                          Lab Researchers &amp; Investigators
+                        </label>
+                        <p className={`text-[11px] ${subText}`}>
+                          Select from official lab team roster and define specific investigation roles.
+                        </p>
+                      </div>
                       <button
                         type="button"
                         onClick={() =>
@@ -731,7 +1033,10 @@ export default function AdminProjectsPage() {
                             ...formData,
                             researcher_assignments: [
                               ...formData.researcher_assignments,
-                              { person_id: SEED_RESEARCHERS[0].id, role_in_project: "Researcher" },
+                              {
+                                person_id: combinedResearchers[0]?.id || "res-1",
+                                role_in_project: "Researcher",
+                              },
                             ],
                           })
                         }
@@ -743,7 +1048,10 @@ export default function AdminProjectsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {formData.researcher_assignments.map((assignment, idx) => (
-                        <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                        <div
+                          key={idx}
+                          className="flex flex-col sm:flex-row items-center gap-2.5 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50"
+                        >
                           <select
                             value={assignment.person_id}
                             onChange={(e) => {
@@ -753,7 +1061,7 @@ export default function AdminProjectsPage() {
                             }}
                             className={`w-full sm:w-1/2 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
                           >
-                            {SEED_RESEARCHERS.map((person) => (
+                            {combinedResearchers.map((person) => (
                               <option key={person.id} value={person.id}>
                                 {person.name} ({person.position})
                               </option>
@@ -768,7 +1076,7 @@ export default function AdminProjectsPage() {
                               updated[idx].role_in_project = e.target.value;
                               setFormData({ ...formData, researcher_assignments: updated });
                             }}
-                            placeholder="Role (e.g. PI, Lead Analyst)"
+                            placeholder="Role (e.g. PI, Lead Analyst, Field Lead)"
                             className={`w-full sm:flex-1 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
                           />
 
@@ -779,6 +1087,7 @@ export default function AdminProjectsPage() {
                               setFormData({ ...formData, researcher_assignments: updated });
                             }}
                             className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
+                            title="Remove assignment"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -812,7 +1121,10 @@ export default function AdminProjectsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {formData.collaborators.map((collab, idx) => (
-                        <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                        <div
+                          key={idx}
+                          className="flex flex-col sm:flex-row items-center gap-2.5 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50"
+                        >
                           <input
                             type="text"
                             value={collab.name}
@@ -867,23 +1179,181 @@ export default function AdminProjectsPage() {
             {/* 4. RESEARCH PILLARS & THEMATIC AREAS */}
             {(editorSection === "all" || editorSection === "areas") && (
               <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                    <FlaskConical className="w-5 h-5" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <FlaskConical className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className={`text-base font-bold ${headingText}`}>
+                        04. Research Focus Pillars &amp; Thematic Disciplines
+                      </h2>
+                      <p className={`text-xs ${subText}`}>
+                        Tag scientific focus areas and create or manage thematic categories.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className={`text-base font-bold ${headingText}`}>
-                      04. Research Focus Pillars
-                    </h2>
-                    <p className={`text-xs ${subText}`}>
-                      Check all thematic scientific areas that categorize this research.
-                    </p>
-                  </div>
+
+                  {/* Button to Add New Thematic Area */}
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAreaForm(!showNewAreaForm)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 transition cursor-pointer self-start sm:self-auto"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create New Thematic Area</span>
+                  </button>
                 </div>
 
+                {/* Inline Creation Form for New Thematic Area */}
+                {showNewAreaForm && (
+                  <div
+                    className={`p-5 rounded-2xl border space-y-4 animate-in fade-in duration-200 ${
+                      isLight ? "bg-emerald-50/50 border-emerald-200" : "bg-emerald-950/20 border-emerald-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-500" />
+                        <span className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                          Create New Scientific Pillar / Category
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewAreaForm(false)}
+                        className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                          Discipline Title *
+                        </label>
+                        <input
+                          type="text"
+                          value={newAreaTitle}
+                          onChange={(e) => setNewAreaTitle(e.target.value)}
+                          placeholder="e.g. Coastal Ecotoxicology &amp; Biogeochemistry"
+                          className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                          Brief Focus / Description (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newAreaDesc}
+                          onChange={(e) => setNewAreaDesc(e.target.value)}
+                          placeholder="e.g. Marine micro-debris mapping and ecotoxicity testing"
+                          className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewAreaForm(false)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition ${
+                          isLight
+                            ? "border-slate-300 hover:bg-slate-100 text-slate-700"
+                            : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                        }`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCreateNewArea()}
+                        disabled={creatingArea || !newAreaTitle.trim()}
+                        className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition shadow-sm cursor-pointer flex items-center gap-1.5"
+                      >
+                        {creatingArea ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Creating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Save &amp; Tag Pillar</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Grid of Research Focus Pillars */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {researchAreas.map((area) => {
                     const isSelected = formData.research_area_ids.includes(area.id);
+                    const isBeingEdited = editingAreaId === area.id;
+
+                    if (isBeingEdited) {
+                      return (
+                        <div
+                          key={area.id}
+                          className={`p-4 rounded-2xl border space-y-3 ${
+                            isLight
+                              ? "bg-amber-50/60 border-amber-300"
+                              : "bg-amber-950/20 border-amber-700/60"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
+                            <span>Edit Thematic Pillar</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditingAreaId(null)}
+                              className="p-1 hover:text-slate-600 dark:hover:text-white"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            value={editAreaTitle}
+                            onChange={(e) => setEditAreaTitle(e.target.value)}
+                            placeholder="Pillar Title"
+                            className={`w-full px-3 py-1.5 text-xs font-bold rounded-lg border outline-none ${inputBg}`}
+                          />
+
+                          <textarea
+                            rows={2}
+                            value={editAreaDesc}
+                            onChange={(e) => setEditAreaDesc(e.target.value)}
+                            placeholder="Scientific focus summary..."
+                            className={`w-full px-3 py-1.5 text-[11px] rounded-lg border outline-none ${inputBg}`}
+                          />
+
+                          <div className="flex items-center justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingAreaId(null)}
+                              className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSaveEditArea}
+                              disabled={savingAreaEdit || !editAreaTitle.trim()}
+                              className="px-3 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg flex items-center gap-1"
+                            >
+                              {savingAreaEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                              <span>Save</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={area.id}
@@ -900,7 +1370,7 @@ export default function AdminProjectsPage() {
                             });
                           }
                         }}
-                        className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
+                        className={`group relative p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
                           isSelected
                             ? "border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 shadow-sm"
                             : isLight
@@ -917,13 +1387,34 @@ export default function AdminProjectsPage() {
                         >
                           {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
-                        <div>
+
+                        <div className="flex-1 pr-6">
                           <div className="font-bold text-xs sm:text-sm">{area.title}</div>
                           {area.description && (
                             <div className={`text-[11px] ${subText} line-clamp-2 mt-1`}>
                               {area.description}
                             </div>
                           )}
+                        </div>
+
+                        {/* Edit & Delete Action Buttons */}
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                          <button
+                            type="button"
+                            onClick={(e) => handleStartEditArea(area, e)}
+                            title="Edit this discipline title & description"
+                            className="p-1 rounded-md text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10 transition"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteArea(area.id, area.title, e)}
+                            title="Delete this discipline"
+                            className="p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     );

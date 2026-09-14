@@ -245,3 +245,100 @@ export async function togglePublicationPublish(id: string, is_published: boolean
   saveLocalPublications(updated);
   return true;
 }
+
+/**
+ * Batch insert multiple publications at once
+ */
+export async function batchCreatePublications(
+  records: PublicationFormData[]
+): Promise<{ success: boolean; insertedCount: number; errors: string[] }> {
+  const currentList = getLocalPublications();
+  const existingSlugs = new Set(currentList.map((p) => p.slug));
+  const existingDois = new Set(currentList.map((p) => p.doi?.toLowerCase()).filter(Boolean));
+
+  const newPubs: PublicationWithRelations[] = [];
+  const payloads: any[] = [];
+  const errors: string[] = [];
+
+  for (let i = 0; i < records.length; i++) {
+    const formData = records[i];
+    const newId = formData.id || `pub-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`;
+    let slug = formData.slug?.trim() || generatePublicationSlug(formData.title || `publication-${i}`);
+    if (existingSlugs.has(slug)) {
+      slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
+    existingSlugs.add(slug);
+
+    const { doi, doi_url } = formatDoi(formData.doi);
+
+    const publicationPayload: any = {
+      id: newId,
+      title: formData.title || "Untitled Publication",
+      slug,
+      abstract: formData.abstract || "",
+      publication_type: formData.publication_type || "journal_article",
+      journal: formData.journal || "Scientific Journal",
+      volume: formData.volume || null,
+      issue: formData.issue || null,
+      pages: formData.pages || null,
+      publication_year: Number(formData.publication_year) || new Date().getFullYear(),
+      publication_date: formData.publication_date || null,
+      doi,
+      doi_url,
+      pdf_url: formData.pdf_url || null,
+      external_url: formData.external_url || null,
+      impact_factor: formData.impact_factor ? parseFloat(formData.impact_factor) : null,
+      citation_count: formData.citation_count ? parseInt(formData.citation_count, 10) : 0,
+      quartile: formData.quartile || (formData.impact_factor && parseFloat(formData.impact_factor) >= 6 ? "Q1" : "Q2"),
+      is_featured: formData.is_featured || false,
+      is_published: formData.is_published !== undefined ? formData.is_published : true,
+      display_order: formData.display_order ?? 0,
+      authors_text: formData.authors_text || "Lab Researchers",
+      bibtex: formData.bibtex || null,
+    };
+
+    payloads.push(publicationPayload);
+
+    const matchedAreas = SEED_RESEARCH_AREAS.filter((a) => formData.research_area_ids?.includes(a.id));
+    const fullPub: PublicationWithRelations = {
+      id: newId,
+      ...publicationPayload,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      authors: [
+        { name: "Lab Researchers", is_lab_member: true, is_corresponding: true, display_order: 1 },
+      ],
+      research_areas: matchedAreas,
+      projects: [],
+    };
+
+    newPubs.push(fullPub);
+  }
+
+  // Attempt remote Supabase batch insert
+  try {
+    const supabase = createClient();
+    const { error } = await (supabase as any)
+      .from("publications")
+      .insert(payloads);
+
+    if (error) {
+      console.warn("Supabase batch insert error, falling back to local store:", error);
+      errors.push(error.message);
+    } else {
+      await logPublicationActivity("Batch publications created", "batch", { count: payloads.length });
+    }
+  } catch (err: any) {
+    console.warn("Supabase batch insert exception, saving locally:", err);
+  }
+
+  // Update local store
+  saveLocalPublications([...newPubs, ...currentList]);
+
+  return {
+    success: true,
+    insertedCount: newPubs.length,
+    errors,
+  };
+}
+

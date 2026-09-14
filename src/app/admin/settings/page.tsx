@@ -17,7 +17,7 @@ export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
 
   const [settings, setSettings] = useState({
-    labName: "Environmental Health & Ecotoxicology Laboratory",
+    labName: "Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
     department: "Department of Environmental Sciences",
     university: "Jahangirnagar University",
     contactEmail: "ecotox@juniv.edu",

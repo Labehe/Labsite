@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Waves,
+  Shuffle,
 } from "lucide-react";
 import { useLandingData } from "@/lib/landing-store";
 
@@ -152,8 +153,55 @@ interface ResearchAreasProps {
 export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
   const landingData = useLandingData();
   const [viewMode, setViewMode] = React.useState<"deck" | "radial" | "grid">("deck");
+  const [domains, setDomains] = React.useState<StudyDomain[]>(STUDY_DOMAINS);
   const [activeCard, setActiveCard] = React.useState<StudyDomain>(STUDY_DOMAINS[0]);
   const [isHovering, setIsHovering] = React.useState(false);
+  const [isShuffling, setIsShuffling] = React.useState(false);
+
+  // Shuffle array helper
+  const shuffleArray = React.useCallback((array: StudyDomain[]) => {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, []);
+
+  // Randomize View Mode & Cards on client load based on admin settings
+  React.useEffect(() => {
+    const shouldShuffleMode = landingData.researchFocus?.shuffleViewMode !== false;
+    const viewModes: Array<"deck" | "radial" | "grid"> = ["deck", "radial", "grid"];
+
+    if (shouldShuffleMode) {
+      const randomMode = viewModes[Math.floor(Math.random() * viewModes.length)];
+      setViewMode(randomMode);
+    } else if (landingData.researchFocus?.defaultViewMode) {
+      setViewMode(landingData.researchFocus.defaultViewMode);
+    }
+
+    const shuffled = shuffleArray(STUDY_DOMAINS);
+    setDomains(shuffled);
+    setActiveCard(shuffled[0]);
+  }, [
+    landingData.researchFocus?.shuffleViewMode,
+    landingData.researchFocus?.defaultViewMode,
+    shuffleArray,
+  ]);
+
+  // Interactive shuffle button handler
+  const handleShuffle = () => {
+    setIsShuffling(true);
+    const viewModes: Array<"deck" | "radial" | "grid"> = ["deck", "radial", "grid"];
+    const otherModes = viewModes.filter((m) => m !== viewMode);
+    const nextRandomMode = otherModes[Math.floor(Math.random() * otherModes.length)];
+    setViewMode(nextRandomMode);
+
+    const shuffled = shuffleArray(domains);
+    setDomains(shuffled);
+    setActiveCard(shuffled[0]);
+    setTimeout(() => setIsShuffling(false), 600);
+  };
 
   return (
     <section className="w-full py-16 sm:py-24 bg-[#F8FAF9] dark:bg-[#090D16] transition-colors duration-300 relative overflow-hidden">
@@ -164,7 +212,7 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
       {/* Full-Canvas Container */}
       <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 relative z-10 space-y-10 sm:space-y-12">
 
-        {/* Section Header with View Mode Switcher */}
+        {/* Section Header with View Mode Switcher + Shuffle */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-6">
           <div className="space-y-2 text-left max-w-3xl">
             {/* Pill Tag */}
@@ -184,10 +232,10 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
             )}
           </div>
 
-          {/* Right Controls: View Mode Switcher + Explore Link */}
+          {/* Right Controls: View Mode Switcher + Shuffle Button + Explore Link */}
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            {/* Interactive View Mode Switcher (Deck, Orbit, Grid) */}
-            <div className="inline-flex items-center p-1 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-sm">
+            {/* Interactive View Mode Switcher (Deck, Orbit, Grid, Shuffle) */}
+            <div className="inline-flex items-center p-1 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-sm gap-0.5">
               <button
                 type="button"
                 onClick={() => setViewMode("deck")}
@@ -224,6 +272,21 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span>Grid Matrix</span>
               </button>
+
+              <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+              {/* Shuffle / Randomize Button */}
+              <button
+                type="button"
+                onClick={handleShuffle}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer text-slate-600 dark:text-slate-300 hover:text-[#14532D] dark:hover:text-[#34D399] hover:bg-slate-100 dark:hover:bg-slate-800/80 active:scale-95 ${
+                  isShuffling ? "text-emerald-500 scale-105" : ""
+                }`}
+                title="Shuffle & Randomize Research Pillars"
+              >
+                <Shuffle className={`w-3.5 h-3.5 transition-transform duration-500 ${isShuffling ? "rotate-180 text-emerald-500 scale-125" : ""}`} />
+                <span className="hidden xs:inline">Shuffle</span>
+              </button>
             </div>
 
             {/* "Explore all research areas →" Link */}
@@ -255,7 +318,7 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
 
             {/* Expanding Horizontal Monolith Deck */}
             <div className="flex flex-col lg:flex-row items-stretch gap-3 sm:gap-4 min-h-[580px] lg:min-h-[620px]">
-              {STUDY_DOMAINS.map((domain) => {
+              {domains.map((domain) => {
                 const Icon = domain.icon;
                 const isExpanded = activeCard.id === domain.id;
 
@@ -482,8 +545,9 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                     className="text-emerald-500/20 dark:text-emerald-500/15"
                   />
 
-                  {STUDY_DOMAINS.map((domain) => {
-                    const rad = (domain.angleDeg * Math.PI) / 180;
+                  {domains.map((domain, idx) => {
+                    const angleDeg = (idx * (360 / (domains.length || 6)) + 270) % 360;
+                    const rad = (angleDeg * Math.PI) / 180;
                     const r = 225;
                     const targetX = Math.round(r * Math.cos(rad));
                     const targetY = Math.round(r * Math.sin(rad));
@@ -535,9 +599,10 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
                 </div>
 
                 {/* 6 Orbiting Satellite Circular Nodes */}
-                {STUDY_DOMAINS.map((domain) => {
+                {domains.map((domain, idx) => {
                   const Icon = domain.icon;
-                  const rad = (domain.angleDeg * Math.PI) / 180;
+                  const angleDeg = (idx * (360 / (domains.length || 6)) + 270) % 360;
+                  const rad = (angleDeg * Math.PI) / 180;
                   const r = 225;
                   const x = Math.round(r * Math.cos(rad));
                   const y = Math.round(r * Math.sin(rad));
@@ -763,7 +828,7 @@ export function ResearchAreas({ areas }: ResearchAreasProps = {}) {
             </div>
 
             <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
-              {STUDY_DOMAINS.map((domain) => {
+              {domains.map((domain) => {
                 const Icon = domain.icon;
                 const isSelected = activeCard.id === domain.id;
 

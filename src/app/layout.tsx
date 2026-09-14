@@ -18,8 +18,8 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: {
-    default: "Environmental Health & Ecotoxicology Laboratory",
-    template: "%s | Ecotoxicology & Environmental Health Lab",
+    default: "Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
+    template: "%s | Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
   },
   description:
     "Leading academic research laboratory investigating environmental contaminants, exposure pathways, biological responses, and impacts on ecological and human health.",

@@ -9,19 +9,143 @@ import {
   User,
   CheckCircle2,
   Sparkles,
+  FolderGit2,
+  Calendar,
+  Layers
 } from "lucide-react";
-import { MOCK_PROJECTS, type FeaturedProjectItem } from "@/data/mock-homepage";
 import { useLandingData } from "@/lib/landing-store";
+import { getPublishedProjects, getLocalProjects } from "@/lib/projects/queries";
+import { ProjectWithRelations } from "@/lib/projects/types";
 
-interface FeaturedProjectsProps {
-  projects?: FeaturedProjectItem[];
+interface DisplayProject {
+  id: string;
+  projectCode: string;
+  title: string;
+  slug: string;
+  status: string;
+  description: string;
+  imageSrc: string;
+  imageAlt: string;
+  researchArea: string;
+  timeline: string;
+  leadResearcher: string;
+  funding: string;
+  keyOutcome: string;
+  isFeatured?: boolean;
 }
 
-export function FeaturedProject({ projects = MOCK_PROJECTS }: FeaturedProjectsProps) {
+export function FeaturedProject() {
   const landingData = useLandingData();
+  const [projects, setProjects] = React.useState<DisplayProject[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [selectedFilter, setSelectedFilter] = React.useState<string>("ALL");
   const [touchStart, setTouchStart] = React.useState<number | null>(null);
+
+  const formatProjects = React.useCallback((items: ProjectWithRelations[]): DisplayProject[] => {
+    const published = items.filter((p) => p.is_published !== false);
+
+    // Sort: Featured first, then newest
+    const sorted = [...published].sort((a, b) => {
+      if (a.is_featured && !b.is_featured) return -1;
+      if (!a.is_featured && b.is_featured) return 1;
+      const dateA = new Date(a.start_date || a.created_at).getTime();
+      const dateB = new Date(b.start_date || b.created_at).getTime();
+      return dateB - dateA;
+    });
+
+    // Limit to max latest 8 projects
+    const top8 = sorted.slice(0, 8);
+
+    return top8.map((p, idx) => {
+      const primaryArea =
+        p.research_areas?.[0]?.title || "Ecotoxicology & Environmental Science";
+
+      const leadPerson =
+        p.researchers?.[0]?.name ||
+        (p.researchers && p.researchers.length > 0
+          ? p.researchers.map((r) => r.name).join(" & ")
+          : "Lab Research Team");
+
+      const fundingSource =
+        p.funding_org || p.funding_info?.split("#")[0] || "National Research Grant";
+
+      // Fallback clean scientific imagery
+      let validImage = p.hero_image || p.featured_image;
+      if (!validImage || validImage.includes("photo-1582719478250-c89cae4dc85b")) {
+        validImage = "/images/gallery/field-sampling.jpg";
+      }
+
+      return {
+        id: p.id || `proj-${idx}`,
+        projectCode: (p.funding_info && p.funding_info.includes("#"))
+          ? p.funding_info.split("#")[1]?.trim() || `PROJ-${p.year || "2026"}`
+          : `JU-ENV-${p.year?.slice(0, 4) || "2026"}-${idx + 1}`,
+        title: p.title,
+        slug: p.slug || (p.title ? p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "project"),
+        status: (p.status || "COMPLETED").toUpperCase(),
+        description: p.short_description || p.full_description?.slice(0, 160) || "Comprehensive ecotoxicological investigation assessing environmental exposure pathways.",
+        imageSrc: validImage,
+        imageAlt: p.image_alt || p.title,
+        researchArea: primaryArea,
+        timeline: p.year || (p.start_date ? `${p.start_date.slice(0, 4)} — ${p.end_date?.slice(0, 4) || "Present"}` : "2024 — 2026"),
+        leadResearcher: leadPerson,
+        funding: fundingSource,
+        keyOutcome: p.findings ? p.findings.slice(0, 50) + "..." : (p.outputs || "Peer-Reviewed Scientific Breakthrough"),
+        isFeatured: p.is_featured,
+      };
+    });
+  }, []);
+
+  const loadAllProjects = React.useCallback(() => {
+    try {
+      const local = getLocalProjects();
+      if (local && local.length > 0) {
+        setProjects(formatProjects(local));
+      }
+    } catch (e) {
+      console.error("Failed to load local projects:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [formatProjects]);
+
+  React.useEffect(() => {
+    loadAllProjects();
+
+    // Fetch fresh from Supabase if online
+    getPublishedProjects({}, false).then((remote) => {
+      if (remote && remote.length > 0) {
+        setProjects(formatProjects(remote));
+      }
+    });
+
+    const handleUpdate = () => {
+      loadAllProjects();
+    };
+
+    window.addEventListener("lab_projects_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      window.removeEventListener("lab_projects_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [loadAllProjects, formatProjects]);
+
+  // Extract unique filter categories from the loaded projects
+  const filterTabs = React.useMemo(() => {
+    const areasSet = new Set<string>();
+    projects.forEach((p) => {
+      if (p.researchArea) areasSet.add(p.researchArea);
+    });
+
+    const tabs = [{ id: "ALL", label: "All Completed Studies" }];
+    Array.from(areasSet).slice(0, 5).forEach((area) => {
+      tabs.push({ id: area, label: area });
+    });
+    return tabs;
+  }, [projects]);
 
   const filteredProjects = React.useMemo(() => {
     if (selectedFilter === "ALL") return projects;
@@ -81,7 +205,7 @@ export function FeaturedProject({ projects = MOCK_PROJECTS }: FeaturedProjectsPr
           <div className="space-y-2 text-left max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-800 dark:text-[#34D399] text-xs font-semibold tracking-wider uppercase shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-              <span>{landingData.projectsSection?.badge || "Research in Action"}</span>
+              <span>{landingData.projectsSection?.badge || "FLAGSHIP RESEARCH"}</span>
             </div>
 
             <h2 className="text-2xl sm:text-3xl lg:text-4xl 2xl:text-[42px] font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug font-[family-name:var(--font-manrope)]">
@@ -90,14 +214,16 @@ export function FeaturedProject({ projects = MOCK_PROJECTS }: FeaturedProjectsPr
 
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal pt-1 max-w-2xl font-[family-name:var(--font-inter)]">
               {landingData.projectsSection?.subtitle ||
-                "Showcasing peer-reviewed grant milestones, validated field methodologies, and evidence-based environmental policy outputs."}
+                "High-impact investigative projects funded by national and international scientific bodies."}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            <span className="text-xs font-semibold text-emerald-800 dark:text-[#34D399] bg-emerald-50 dark:bg-emerald-950/60 px-3.5 py-1.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/30">
-              {currentIndex + 1} – {Math.min(currentIndex + itemsPerPage, filteredProjects.length)} of {filteredProjects.length} Projects
-            </span>
+            {filteredProjects.length > 0 && (
+              <span className="text-xs font-semibold text-emerald-800 dark:text-[#34D399] bg-emerald-50 dark:bg-emerald-950/60 px-3.5 py-1.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/30">
+                {currentIndex + 1} – {Math.min(currentIndex + itemsPerPage, filteredProjects.length)} of {filteredProjects.length} Projects
+              </span>
+            )}
 
             <div className="inline-flex items-center gap-2">
               <button
@@ -142,29 +268,24 @@ export function FeaturedProject({ projects = MOCK_PROJECTS }: FeaturedProjectsPr
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {[
-            { id: "ALL", label: "All Completed Studies" },
-            { id: "Microplastics", label: "Microplastics & Fate" },
-            { id: "Contamination", label: "PFAS & Trace Metals" },
-            { id: "Health", label: "Molecular Health & Risk" },
-            { id: "Circular", label: "Circular Bioremediation" },
-            { id: "GIS", label: "Remote Sensing & GIS" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setSelectedFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-semibold transition-all cursor-pointer ${
-                selectedFilter === tab.id
-                  ? "bg-[#14532D] text-white shadow-sm border border-transparent"
-                  : "bg-slate-100 dark:bg-[#0F172A] text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:border-[#10B981] hover:bg-emerald-50 dark:hover:bg-slate-800/80"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {filterTabs.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedFilter(tab.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-semibold transition-all cursor-pointer ${
+                  selectedFilter === tab.id
+                    ? "bg-[#14532D] text-white shadow-sm border border-transparent"
+                    : "bg-slate-100 dark:bg-[#0F172A] text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:border-[#10B981] hover:bg-emerald-50 dark:hover:bg-slate-800/80"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Carousel Grid Track */}
         <div
@@ -172,107 +293,119 @@ export function FeaturedProject({ projects = MOCK_PROJECTS }: FeaturedProjectsPr
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          <div
-            className="flex transition-transform duration-500 ease-out gap-5 sm:gap-6"
-            style={{
-              transform: `translateX(-${currentIndex * (100 / itemsPerPage)}%)`,
-            }}
-          >
-            {filteredProjects.map((project) => (
-              <div
-                key={project.id}
-                className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] flex-shrink-0 flex flex-col"
-              >
-                <div className="group h-full rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200/90 dark:border-slate-800 hover:border-[#10B981] dark:hover:border-[#10B981] shadow-sm hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 flex flex-col justify-between overflow-hidden hover:-translate-y-1.5">
-                  
-                  <div>
-                    <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-900">
-                      <img
-                        src={project.imageSrc}
-                        alt={project.imageAlt}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.93]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30 pointer-events-none" />
-
-                      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
-                        <span className="text-xs font-bold text-[#34D399] px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-md border border-emerald-500/30 shadow">
-                          {project.projectCode}
-                        </span>
-
-                        <span className="text-[11px] font-semibold text-white px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-700/50 flex items-center gap-1.5 shadow">
-                          <CheckCircle2 className="w-3 h-3 text-[#10B981]" />
-                          <span>{project.status}</span>
-                        </span>
-                      </div>
-
-                      <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-white text-xs z-10">
-                        <span className="text-emerald-300 font-semibold truncate">
-                          {project.funding.split("(")[0]}
-                        </span>
-                        <span className="text-white/80 text-[11px] font-medium">
-                          {project.timeline}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="relative -mt-4 z-10 w-full overflow-hidden leading-none pointer-events-none">
-                      <svg
-                        className="w-full h-5 text-white dark:text-[#0F172A] transition-colors"
-                        viewBox="0 0 100 25"
-                        preserveAspectRatio="none"
-                      >
-                        <path
-                          d="M0,8 C25,22 65,-4 100,12 L100,25 L0,25 Z"
-                          fill="currentColor"
+          {filteredProjects.length > 0 ? (
+            <div
+              className="flex transition-transform duration-500 ease-out gap-5 sm:gap-6"
+              style={{
+                transform: `translateX(-${currentIndex * (100 / itemsPerPage)}%)`,
+              }}
+            >
+              {filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] flex-shrink-0 flex flex-col"
+                >
+                  <div className="group h-full rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200/90 dark:border-slate-800 hover:border-[#10B981] dark:hover:border-[#10B981] shadow-sm hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 flex flex-col justify-between overflow-hidden hover:-translate-y-1.5 text-left">
+                    
+                    <div>
+                      <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-900">
+                        <img
+                          src={project.imageSrc}
+                          alt={project.imageAlt}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.93]"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/images/gallery/field-sampling.jpg";
+                          }}
                         />
-                      </svg>
-                    </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30 pointer-events-none" />
 
-                    <div className="p-5 sm:p-6 pt-1 space-y-3.5 text-left">
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#059669] dark:text-[#34D399] block font-[family-name:var(--font-inter)]">
-                          {project.researchArea}
-                        </span>
+                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
+                          <span className="text-xs font-bold text-[#34D399] px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-md border border-emerald-500/30 shadow font-mono truncate max-w-[170px]">
+                            {project.projectCode}
+                          </span>
 
-                        <h3 className="text-base sm:text-[17px] font-bold text-slate-900 dark:text-white tracking-[-0.01em] font-[family-name:var(--font-manrope)] group-hover:text-[#059669] dark:group-hover:text-[#34D399] transition-colors leading-[1.38] line-clamp-2">
-                          {project.title}
-                        </h3>
+                          <span className="text-[11px] font-semibold text-white px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-700/50 flex items-center gap-1.5 shadow">
+                            <CheckCircle2 className="w-3 h-3 text-[#10B981]" />
+                            <span>{project.status}</span>
+                          </span>
+                        </div>
 
-                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal line-clamp-3 pt-0.5 font-[family-name:var(--font-inter)]">
-                          {project.description}
-                        </p>
+                        <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-white text-xs z-10">
+                          <span className="text-emerald-300 font-semibold truncate max-w-[180px]">
+                            {project.funding}
+                          </span>
+                          <span className="text-white/80 text-[11px] font-medium font-mono">
+                            {project.timeline}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="p-2.5 px-3 rounded-xl bg-[#F0FDF4] dark:bg-[#0B1120] border border-emerald-900/10 dark:border-slate-800 flex items-center gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-[#10B981] flex-shrink-0" />
-                        <span className="text-xs font-semibold text-[#064E3B] dark:text-emerald-300 leading-snug">
-                          {project.keyOutcome}
-                        </span>
+                      <div className="relative -mt-4 z-10 w-full overflow-hidden leading-none pointer-events-none">
+                        <svg
+                          className="w-full h-5 text-white dark:text-[#0F172A] transition-colors"
+                          viewBox="0 0 100 25"
+                          preserveAspectRatio="none"
+                        >
+                          <path
+                            d="M0,8 C25,22 65,-4 100,12 L100,25 L0,25 Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </div>
+
+                      <div className="p-5 sm:p-6 pt-1 space-y-3.5 text-left">
+                        <div className="space-y-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#059669] dark:text-[#34D399] block font-[family-name:var(--font-inter)] truncate">
+                            {project.researchArea}
+                          </span>
+
+                          <h3 className="text-base sm:text-[17px] font-bold text-slate-900 dark:text-white tracking-[-0.01em] font-[family-name:var(--font-manrope)] group-hover:text-[#059669] dark:group-hover:text-[#34D399] transition-colors leading-[1.38] line-clamp-2">
+                            {project.title}
+                          </h3>
+
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal line-clamp-3 pt-0.5 font-[family-name:var(--font-inter)]">
+                            {project.description}
+                          </p>
+                        </div>
+
+                        <div className="p-2.5 px-3 rounded-xl bg-[#F0FDF4] dark:bg-[#0B1120] border border-emerald-900/10 dark:border-slate-800 flex items-center gap-2">
+                          <Sparkles className="w-3.5 h-3.5 text-[#10B981] flex-shrink-0" />
+                          <span className="text-xs font-semibold text-[#064E3B] dark:text-emerald-300 leading-snug line-clamp-1">
+                            {project.keyOutcome}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <div className="p-5 sm:p-6 pt-0">
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 truncate font-[family-name:var(--font-inter)]">
+                          <User className="w-3.5 h-3.5 text-[#059669] dark:text-[#34D399] flex-shrink-0" />
+                          <span className="truncate">{project.leadResearcher}</span>
+                        </div>
+
+                        <Link
+                          href={`/projects#${project.slug}`}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-[#14532D] dark:text-[#10B981] group-hover:translate-x-1 transition-transform flex-shrink-0"
+                        >
+                          <span>Findings</span>
+                          <ArrowRight className="w-3 h-3 stroke-[2.5]" />
+                        </Link>
+                      </div>
+                    </div>
+
                   </div>
-
-                  <div className="p-5 sm:p-6 pt-0">
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 truncate font-[family-name:var(--font-inter)]">
-                        <User className="w-3.5 h-3.5 text-[#059669] dark:text-[#34D399] flex-shrink-0" />
-                        <span className="truncate">{project.leadResearcher.split("&")[0]}</span>
-                      </div>
-
-                      <Link
-                        href={`/projects#${project.slug}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#14532D] dark:text-[#10B981] group-hover:translate-x-1 transition-transform flex-shrink-0"
-                      >
-                        <span>Findings</span>
-                        <ArrowRight className="w-3 h-3 stroke-[2.5]" />
-                      </Link>
-                    </div>
-                  </div>
-
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 space-y-3">
+              <FolderGit2 className="w-10 h-10 text-slate-400 mx-auto opacity-50" />
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                No active projects found. Create projects in Admin → Projects.
+              </p>
+            </div>
+          )}
         </div>
 
       </div>

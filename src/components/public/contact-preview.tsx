@@ -53,7 +53,7 @@ export function ContactPreview() {
                   <span>Facility Location</span>
                 </div>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white font-[family-name:var(--font-inter)]">
-                  {landingData.contactSection?.facilityName || "Dept. of Environmental Sciences"}
+                  {landingData.contactSection?.facilityName || "Laboratory of Environmental Health and Ecotoxicology (LabEHE)"}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {landingData.contactSection?.address || "Jahangirnagar University, Savar"}
@@ -104,7 +104,7 @@ export function ContactPreview() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-xs font-semibold uppercase text-emerald-200">
                 <Navigation className="w-3.5 h-3.5 text-[#34D399]" />
-                <span>{landingData.contactSection?.facilityName || "Jahangirnagar University Campus"}</span>
+                <span>{landingData.contactSection?.facilityName || "Laboratory of Environmental Health and Ecotoxicology (LabEHE)"}</span>
               </div>
 
               <div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md">
@@ -141,12 +141,20 @@ export function ContactPreview() {
                   <img
                     src={landingData.contactSection?.aerialImageSrc || "/images/jahangirnagar-campus.jpg"}
                     alt="Jahangirnagar University Campus aerial view"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.includes("jahangirnagar-campus.jpg")) {
+                        target.src = "/images/jahangirnagar-campus.jpg";
+                      } else {
+                        target.src = "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1600&q=80";
+                      }
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.95]"
                   />
                   <div className="absolute top-1/3 left-1/3 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-emerald-400 text-white shadow-xl animate-bounce">
                     <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-ping" />
                     <span className="text-[11px] font-bold text-white tracking-wide">
-                      {landingData.contactSection?.facilityName || "Dept. of Environmental Sciences"}
+                      {landingData.contactSection?.facilityName || "Laboratory of Environmental Health and Ecotoxicology (LabEHE)"}
                     </span>
                   </div>
 

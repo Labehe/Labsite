@@ -183,7 +183,7 @@ export default function NewsDetailPage() {
                     {article.author_name}
                   </div>
                   <div className="text-xs text-slate-600 dark:text-slate-400">
-                    {article.author_role || "Environmental Health & Ecotoxicology Laboratory"}
+                    {article.author_role || "Laboratory of Environmental Health and Ecotoxicology (LabEHE)"}
                   </div>
                 </div>
               </div>

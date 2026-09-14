@@ -2,17 +2,153 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowRight, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
-import type { PublicationItem } from "@/data/mock-homepage";
+import { ArrowRight, ExternalLink, ChevronLeft, ChevronRight, Star, BookOpen } from "lucide-react";
 import { useLandingData } from "@/lib/landing-store";
+import { getPublishedPublications, getLocalPublications } from "@/lib/publications/queries";
+import { PublicationWithRelations } from "@/lib/publications/types";
+import { PublicationItem } from "@/data/mock-homepage";
 
 interface FeaturedPublicationsProps {
-  publications: PublicationItem[];
+  publications?: PublicationItem[];
 }
 
-export function FeaturedPublications({ publications }: FeaturedPublicationsProps) {
+interface DisplayPublication {
+  id: string;
+  title: string;
+  year: number;
+  type: string;
+  researchArea: string;
+  authors: string[];
+  journal: string;
+  doi?: string | null;
+  doi_url?: string | null;
+  is_featured?: boolean;
+}
+
+export function FeaturedPublications({ publications: propPublications }: FeaturedPublicationsProps) {
   const landingData = useLandingData();
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [items, setItems] = React.useState<DisplayPublication[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const loadPublications = React.useCallback(() => {
+    try {
+      const local = getLocalPublications();
+      const published = local.filter((p) => p.is_published !== false);
+
+      // Sort: Featured first, then newest by year & created_at
+      const sorted = [...published].sort((a, b) => {
+        if (a.is_featured && !b.is_featured) return -1;
+        if (!a.is_featured && b.is_featured) return 1;
+        return (
+          b.publication_year - a.publication_year ||
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+
+      // Limit to 10 max
+      const top10 = sorted.slice(0, 10);
+
+      const mapped: DisplayPublication[] = top10.map((pub) => {
+        const areaTitle =
+          pub.research_areas?.[0]?.title ||
+          (pub.publication_type ? pub.publication_type.replace(/_/g, " ").toUpperCase() : "ECOTOXICOLOGY");
+
+        const authorsList =
+          pub.authors && pub.authors.length > 0
+            ? pub.authors.map((a) => a.name)
+            : pub.authors_text
+            ? pub.authors_text.split(/,\s*|\s*;\s*|\s*•\s*/).filter(Boolean)
+            : ["Lab Researchers"];
+
+        return {
+          id: pub.id,
+          title: pub.title,
+          year: pub.publication_year || new Date().getFullYear(),
+          type: (pub.publication_type || "journal_article").replace(/_/g, " ").toUpperCase(),
+          researchArea: areaTitle,
+          authors: authorsList,
+          journal: pub.journal || "Journal of Hazardous Materials",
+          doi: pub.doi,
+          doi_url: pub.doi_url || (pub.doi ? `https://doi.org/${pub.doi}` : null),
+          is_featured: pub.is_featured,
+        };
+      });
+
+      setItems(mapped);
+    } catch (e) {
+      console.error("Failed to load dynamic publications:", e);
+      if (propPublications && propPublications.length > 0) {
+        setItems(
+          propPublications.slice(0, 10).map((p) => ({
+            id: p.id,
+            title: p.title,
+            year: p.year,
+            type: p.type,
+            researchArea: p.researchArea,
+            authors: p.authors,
+            journal: p.journal,
+            doi: p.doi,
+            doi_url: p.doi ? `https://doi.org/${p.doi}` : null,
+          }))
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [propPublications]);
+
+  React.useEffect(() => {
+    loadPublications();
+
+    // Also fetch fresh from database if available
+    getPublishedPublications({}, false).then((fetched) => {
+      if (fetched && fetched.length > 0) {
+        const sorted = [...fetched].sort((a, b) => {
+          if (a.is_featured && !b.is_featured) return -1;
+          if (!a.is_featured && b.is_featured) return 1;
+          return (
+            b.publication_year - a.publication_year ||
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        });
+        const top10 = sorted.slice(0, 10);
+        setItems(
+          top10.map((pub) => ({
+            id: pub.id,
+            title: pub.title,
+            year: pub.publication_year || new Date().getFullYear(),
+            type: (pub.publication_type || "journal_article").replace(/_/g, " ").toUpperCase(),
+            researchArea:
+              pub.research_areas?.[0]?.title ||
+              (pub.publication_type ? pub.publication_type.replace(/_/g, " ").toUpperCase() : "ECOTOXICOLOGY"),
+            authors:
+              pub.authors && pub.authors.length > 0
+                ? pub.authors.map((a) => a.name)
+                : pub.authors_text
+                ? pub.authors_text.split(/,\s*|\s*;\s*|\s*•\s*/).filter(Boolean)
+                : ["Lab Researchers"],
+            journal: pub.journal || "Journal of Hazardous Materials",
+            doi: pub.doi,
+            doi_url: pub.doi_url || (pub.doi ? `https://doi.org/${pub.doi}` : null),
+            is_featured: pub.is_featured,
+          }))
+        );
+      }
+    });
+
+    const handleUpdate = () => {
+      loadPublications();
+    };
+
+    window.addEventListener("lab_publications_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      window.removeEventListener("lab_publications_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [loadPublications]);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -30,10 +166,10 @@ export function FeaturedPublications({ publications }: FeaturedPublicationsProps
           <div className="flex flex-col space-y-3 max-w-2xl text-left">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200/80 dark:border-emerald-800/40 text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-[#34D399] w-fit">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-              <span>{landingData.publicationsSection?.badge || "Selected Research"}</span>
+              <span>{landingData.publicationsSection?.badge || "PEER-REVIEWED EVIDENCE"}</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white font-[family-name:var(--font-manrope)] leading-tight">
-              {landingData.publicationsSection?.title || "Our research, published."}
+              {landingData.publicationsSection?.title || "Featured Publications"}
             </h2>
             {landingData.publicationsSection?.subtitle && (
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-xl font-[family-name:var(--font-inter)]">
@@ -66,7 +202,7 @@ export function FeaturedPublications({ publications }: FeaturedPublicationsProps
               href="/publications"
               className="inline-flex items-center gap-2 text-xs font-semibold text-[#14532D] dark:text-[#34D399] uppercase tracking-wider hover:underline ml-2"
             >
-              <span>View All</span>
+              <span>View All ({items.length})</span>
               <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </Link>
           </div>
@@ -74,54 +210,81 @@ export function FeaturedPublications({ publications }: FeaturedPublicationsProps
 
         {/* Publication Cards Carousel */}
         <div className="relative">
-          <div
-            ref={scrollRef}
-            className="flex items-stretch gap-6 overflow-x-auto scrollbar-none py-2 snap-x snap-mandatory scroll-smooth"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            {publications.map((pub) => (
-              <div
-                key={pub.id}
-                className="flex-shrink-0 w-[300px] sm:w-[380px] md:w-[440px] lg:w-[480px] p-7 sm:p-8 rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6 hover:border-[#14532D] dark:hover:border-[#10B981] hover:shadow-md transition-all group/card snap-start text-left"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#059669] dark:text-[#34D399] font-semibold">
-                      {pub.year} · {pub.type}
-                    </span>
-                    <span className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-xs font-semibold text-emerald-800 dark:text-[#34D399] border border-emerald-200/80 dark:border-emerald-800/40">
-                      {pub.researchArea}
-                    </span>
+          {items.length > 0 ? (
+            <div
+              ref={scrollRef}
+              className="flex items-stretch gap-6 overflow-x-auto scrollbar-none py-2 snap-x snap-mandatory scroll-smooth"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {items.map((pub) => (
+                <div
+                  key={pub.id}
+                  className="flex-shrink-0 w-[300px] sm:w-[380px] md:w-[440px] lg:w-[480px] p-7 sm:p-8 rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6 hover:border-[#14532D] dark:hover:border-[#10B981] hover:shadow-md transition-all group/card snap-start text-left"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#059669] dark:text-[#34D399] font-semibold flex items-center gap-1.5">
+                        {pub.is_featured && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider">
+                            <Star className="w-3 h-3 fill-amber-500" />
+                            Featured
+                          </span>
+                        )}
+                        <span>{pub.year} · {pub.type}</span>
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-xs font-semibold text-emerald-800 dark:text-[#34D399] border border-emerald-200/80 dark:border-emerald-800/40 truncate max-w-[170px]">
+                        {pub.researchArea}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 dark:text-white leading-snug tracking-tight font-[family-name:var(--font-manrope)] group-hover/card:text-[#14532D] dark:group-hover/card:text-[#34D399] transition-colors line-clamp-3">
+                      {pub.title}
+                    </h3>
+
+                    <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 font-medium leading-relaxed font-[family-name:var(--font-inter)] line-clamp-2">
+                      {pub.authors.join(" · ")}
+                    </p>
+
+                    <p className="text-xs sm:text-[13px] italic text-[#14532D] dark:text-[#34D399] font-semibold truncate">
+                      {pub.journal}
+                    </p>
                   </div>
 
-                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 dark:text-white leading-snug tracking-tight font-[family-name:var(--font-manrope)] group-hover/card:text-[#14532D] dark:group-hover/card:text-[#34D399] transition-colors">
-                    {pub.title}
-                  </h3>
-
-                  <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 font-medium leading-relaxed font-[family-name:var(--font-inter)]">
-                    {pub.authors.join(" · ")}
-                  </p>
-
-                  <p className="text-xs sm:text-[13px] italic text-[#14532D] dark:text-[#34D399] font-semibold">
-                    {pub.journal}
-                  </p>
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span className="truncate max-w-[200px] font-mono text-[11px]">
+                      {pub.doi ? `DOI: ${pub.doi}` : "Peer-Reviewed Article"}
+                    </span>
+                    {pub.doi_url ? (
+                      <a
+                        href={pub.doi_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 font-semibold text-[#14532D] dark:text-[#34D399] hover:underline flex-shrink-0 cursor-pointer"
+                      >
+                        <span>Read Article</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    ) : (
+                      <Link
+                        href={`/publications#${pub.id}`}
+                        className="inline-flex items-center gap-1.5 font-semibold text-[#14532D] dark:text-[#34D399] hover:underline flex-shrink-0"
+                      >
+                        <span>View Publication</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
-
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span className="truncate max-w-[200px]">DOI: {pub.doi}</span>
-                  <a
-                    href={`https://doi.org/${pub.doi}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 font-semibold text-[#14532D] dark:text-[#34D399] hover:underline flex-shrink-0"
-                  >
-                    <span>Read Article</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 space-y-3">
+              <BookOpen className="w-10 h-10 text-slate-400 mx-auto opacity-50" />
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                No publications published yet. Add papers in Admin → Publications.
+              </p>
+            </div>
+          )}
         </div>
 
       </div>
