@@ -29,7 +29,15 @@ import {
   FlaskConical,
   Filter,
   Check,
-  RefreshCw
+  RefreshCw,
+  ArrowLeft,
+  Layers,
+  FileText,
+  Target,
+  Image as ImageIcon,
+  Share2,
+  SlidersHorizontal,
+  ExternalLink
 } from "lucide-react";
 import { ProjectWithRelations, ProjectStatus, ProjectFormData } from "@/lib/projects/types";
 import { getPublishedProjects, getResearchAreas } from "@/lib/projects/queries";
@@ -58,9 +66,9 @@ export default function AdminProjectsPage() {
   const [publishedFilter, setPublishedFilter] = useState("all");
   const [featuredFilter, setFeaturedFilter] = useState("all");
 
-  // Modal / Editor state
-  const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"basic" | "status" | "science" | "people" | "areas" | "media" | "visibility">("basic");
+  // Full-page Editor View state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editorSection, setEditorSection] = useState<"all" | "basic" | "science" | "people" | "areas" | "grant" | "media" | "visibility">("all");
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [statusNotification, setStatusNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -146,7 +154,7 @@ export default function AdminProjectsPage() {
     return true;
   });
 
-  // Open Add Modal
+  // Open Add Screen (Full Page)
   const handleOpenAdd = () => {
     setFormData({
       ...initialFormState,
@@ -158,11 +166,12 @@ export default function AdminProjectsPage() {
         { name: "Jahangirnagar University", institution: "Dept. of Environmental Sciences", role: "Academic Host" },
       ],
     });
-    setActiveTab("basic");
-    setShowModal(true);
+    setEditorSection("all");
+    setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Open Edit Modal
+  // Open Edit Screen (Full Page)
   const handleOpenEdit = (proj: ProjectWithRelations) => {
     setFormData({
       id: proj.id,
@@ -198,8 +207,9 @@ export default function AdminProjectsPage() {
       collaborators: proj.collaborators || [],
       publication_ids: proj.publications?.map((p) => p.id) || [],
     });
-    setActiveTab("basic");
-    setShowModal(true);
+    setEditorSection("all");
+    setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Auto-generate slug from title
@@ -260,8 +270,9 @@ export default function AdminProjectsPage() {
         setStatusNotification({ type: "success", message: "New research project created." });
       }
 
-      setShowModal(false);
+      setIsEditing(false);
       await loadData();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: any) {
       setStatusNotification({ type: "error", message: err?.message || "Failed to save project." });
     } finally {
@@ -305,870 +316,548 @@ export default function AdminProjectsPage() {
   const inputBg = isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-emerald-500" : "bg-[#090D16] border-slate-700 text-white focus:border-emerald-400";
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <FolderGit2 className="w-5 h-5" />
-            </span>
-            <h1 className={`text-2xl font-bold tracking-tight ${headingText}`}>
-              Research Projects &amp; Grants CMS
-            </h1>
-          </div>
-          <p className={`text-xs md:text-sm ${subText} mt-1.5`}>
-            Manage the laboratory&apos;s active and completed research projects. All changes dynamically reflect on the public research portal.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadData}
-            title="Refresh database"
-            className={`p-2.5 rounded-lg border transition-colors ${
-              isLight ? "border-slate-200 hover:bg-slate-100 text-slate-600" : "border-slate-700 hover:bg-slate-800 text-slate-300"
-            }`}
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-
-          <Link
-            href="/projects"
-            target="_blank"
-            className={`inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold rounded-lg border transition-colors ${
-              isLight ? "border-slate-300 bg-white hover:bg-slate-50 text-slate-700" : "border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5 text-emerald-500" />
-            <span>View Public Portal</span>
-            <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
-          </Link>
-
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-[0.98] cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Research Project</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Status Notification */}
-      {statusNotification && (
-        <div
-          className={`p-4 rounded-xl border flex items-center justify-between gap-3 text-sm animate-in fade-in duration-200 ${
-            statusNotification.type === "success"
-              ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200"
-              : "bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200"
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            {statusNotification.type === "success" ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
-            )}
-            <span>{statusNotification.message}</span>
-          </div>
-          <button
-            onClick={() => setStatusNotification(null)}
-            className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-md"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className={`p-4 rounded-xl border ${cardBg}`}>
-          <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Total Projects</span>
-          <div className="text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 font-mono">
-            {projects.length}
-          </div>
-        </div>
-        <div className={`p-4 rounded-xl border ${cardBg}`}>
-          <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Ongoing</span>
-          <div className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400 font-mono">
-            {projects.filter((p) => p.status === "ongoing").length}
-          </div>
-        </div>
-        <div className={`p-4 rounded-xl border ${cardBg}`}>
-          <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Completed</span>
-          <div className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400 font-mono">
-            {projects.filter((p) => p.status === "completed").length}
-          </div>
-        </div>
-        <div className={`p-4 rounded-xl border ${cardBg}`}>
-          <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Featured</span>
-          <div className="text-2xl font-bold mt-1 text-purple-600 dark:text-purple-400 font-mono">
-            {projects.filter((p) => p.is_featured).length}
-          </div>
-        </div>
-      </div>
-
-      {/* Search & Filter Strip */}
-      <div className={`p-4 rounded-xl border ${cardBg} space-y-3`}>
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full sm:w-80">
-            <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${subText}`} />
-            <input
-              type="text"
-              placeholder="Search title, slug, area..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-9 pr-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className={`px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-            >
-              <option value="all">Status: All</option>
-              <option value="ongoing">Ongoing</option>
-              <option value="completed">Completed</option>
-              <option value="archived">Archived</option>
-            </select>
-
-            {/* Published Filter */}
-            <select
-              value={publishedFilter}
-              onChange={(e) => setPublishedFilter(e.target.value)}
-              className={`px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-            >
-              <option value="all">Visibility: All</option>
-              <option value="published">Published Only</option>
-              <option value="draft">Draft Only</option>
-            </select>
-
-            {/* Featured Filter */}
-            <select
-              value={featuredFilter}
-              onChange={(e) => setFeaturedFilter(e.target.value)}
-              className={`px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-            >
-              <option value="all">Highlight: All</option>
-              <option value="featured">Featured Only</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Projects Table */}
-      <div className={`rounded-xl border overflow-hidden ${cardBg}`}>
-        {isLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-            <span className={`text-xs font-mono ${subText}`}>Loading research projects from database...</span>
-          </div>
-        ) : filteredProjects.length === 0 ? (
-          <div className="py-16 text-center space-y-3">
-            <FolderGit2 className={`w-10 h-10 mx-auto ${subText} opacity-40`} />
-            <div className={`text-sm font-semibold ${headingText}`}>No research projects found</div>
-            <p className={`text-xs ${subText}`}>
-              Try resetting your search query or filter settings.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className={`border-b ${isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-slate-900/60 border-slate-800 text-slate-300"}`}>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider w-16">Preview</th>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider">Project Details</th>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider">Research Areas</th>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider">Timeline / Funding</th>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider text-center">Status</th>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider text-center">Published</th>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider text-center">Featured</th>
-                  <th className="py-3 px-4 font-mono font-semibold uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {filteredProjects.map((proj) => (
-                  <tr
-                    key={proj.id}
-                    className={`transition-colors ${
-                      isLight ? "hover:bg-slate-50/70" : "hover:bg-slate-800/40"
-                    }`}
-                  >
-                    {/* Thumbnail */}
-                    <td className="py-3.5 px-4">
-                      <div className="w-14 h-12 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800 relative border border-slate-300 dark:border-slate-700 shrink-0">
-                        {proj.hero_image ? (
-                          <Image
-                            src={proj.hero_image}
-                            alt={proj.title}
-                            fill
-                            className="object-cover"
-                            sizes="56px"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-400">
-                            <FlaskConical className="w-5 h-5" />
-                          </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Title & Slug */}
-                    <td className="py-3.5 px-4 max-w-sm">
-                      <div className="font-semibold text-sm line-clamp-1 text-slate-900 dark:text-white">
-                        {proj.title}
-                      </div>
-                      <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 truncate mt-0.5">
-                        /projects/{proj.slug}
-                      </div>
-                      <div className={`text-[11px] ${subText} line-clamp-1 mt-1`}>
-                        {proj.short_description}
-                      </div>
-                    </td>
-
-                    {/* Research Areas */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {proj.research_areas && proj.research_areas.length > 0 ? (
-                          proj.research_areas.map((a) => (
-                            <span
-                              key={a.id}
-                              className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
-                            >
-                              {a.title}
-                            </span>
-                          ))
-                        ) : (
-                          <span className={`text-[11px] ${subText} italic`}>Unassigned</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Timeline & Funding */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{proj.year || "2025 — 2027"}</span>
-                      </div>
-                      {proj.funding_org && (
-                        <div className={`text-[11px] ${subText} flex items-center gap-1 mt-1 truncate max-w-[180px]`}>
-                          <Building2 className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{proj.funding_org}</span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Status Badge */}
-                    <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider ${
-                          proj.status === "ongoing"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                            : proj.status === "completed"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                            : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700"
-                        }`}
-                      >
-                        ● {proj.status}
-                      </span>
-                    </td>
-
-                    {/* Published Toggle */}
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleTogglePublish(proj.id, proj.is_published)}
-                        disabled={isPending}
-                        title={proj.is_published ? "Click to set as Draft" : "Click to Publish"}
-                        className={`p-1.5 rounded-lg transition-all ${
-                          proj.is_published
-                            ? "text-emerald-600 hover:bg-emerald-500/10"
-                            : "text-amber-500 hover:bg-amber-500/10"
-                        }`}
-                      >
-                        {proj.is_published ? (
-                          <CheckCircle2 className="w-5 h-5" />
-                        ) : (
-                          <Lock className="w-5 h-5 opacity-70" />
-                        )}
-                      </button>
-                    </td>
-
-                    {/* Featured Toggle */}
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleToggleFeatured(proj.id, proj.is_featured)}
-                        disabled={isPending}
-                        title={proj.is_featured ? "Remove featured badge" : "Mark as featured"}
-                        className={`p-1.5 rounded-lg transition-all ${
-                          proj.is_featured
-                            ? "text-amber-500 hover:bg-amber-500/10"
-                            : "text-slate-400 hover:text-amber-500 hover:bg-slate-500/10"
-                        }`}
-                      >
-                        <Star className={`w-5 h-5 ${proj.is_featured ? "fill-amber-400" : ""}`} />
-                      </button>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Link
-                          href={`/projects/${proj.slug}`}
-                          target="_blank"
-                          title="Preview public project page"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-500/10 transition"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
-
-                        <button
-                          onClick={() => handleOpenEdit(proj)}
-                          title="Edit project"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 transition"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => setDeleteConfirmId(proj.id)}
-                          title="Delete project"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-500/10 transition"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
+    <div className="space-y-6 max-w-7xl mx-auto pb-20">
       {/* ========================================================================= */}
-      {/* CREATE / EDIT PROJECT MODAL EDITOR                                         */}
+      {/* 1. FULL PAGE PROJECT EDITOR STUDIO (WHEN isEditing === true)               */}
       {/* ========================================================================= */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-          <div
-            className={`relative w-full max-w-4xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh] ${
-              isLight ? "bg-white border-slate-200" : "bg-[#0D1526] border-slate-700"
-            }`}
-          >
-            {/* Modal Header */}
-            <div className={`px-6 py-4 border-b flex items-center justify-between shrink-0 ${isLight ? "bg-slate-50 border-slate-200" : "bg-[#111C38] border-slate-800"}`}>
-              <div>
-                <h2 className={`text-lg font-bold ${headingText}`}>
-                  {formData.id ? "Edit Research Project" : "Create New Research Project"}
-                </h2>
-                <p className={`text-xs ${subText} mt-0.5`}>
-                  All fields sync with the public research explorer and detail view.
-                </p>
-              </div>
+      {isEditing ? (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Top Sticky Action Bar */}
+          <div className={`sticky top-0 z-30 p-4 sm:p-5 rounded-2xl border backdrop-blur-md shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+            isLight ? "bg-white/95 border-slate-200" : "bg-[#0D1526]/95 border-slate-800"
+          }`}>
+            <div className="flex items-center gap-3.5">
               <button
-                onClick={() => setShowModal(false)}
-                className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 transition"
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className={`p-2 rounded-xl border transition flex items-center gap-2 text-xs font-semibold ${
+                  isLight ? "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700" : "border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                }`}
               >
-                <X className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Back to Projects</span>
               </button>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    {formData.id ? "Edit Mode" : "New Project"}
+                  </span>
+                  <span className={`text-xs font-mono ${subText}`}>
+                    {formData.slug ? `/projects/${formData.slug}` : "/projects/..."}
+                  </span>
+                </div>
+                <h1 className={`text-lg sm:text-xl font-extrabold truncate max-w-lg ${headingText} mt-0.5`}>
+                  {formData.title || "Untitled Research Project"}
+                </h1>
+              </div>
             </div>
 
-            {/* Modal Navigation Tabs */}
-            <div className={`flex overflow-x-auto border-b shrink-0 px-6 gap-2 text-xs font-mono font-medium ${isLight ? "bg-white border-slate-200" : "bg-slate-900/90 border-slate-800"}`}>
-              {[
-                { id: "basic", label: "01 Basic Info" },
-                { id: "status", label: "02 Status & Grant" },
-                { id: "science", label: "03 Scientific Content" },
-                { id: "people", label: "04 Researchers & Partners" },
-                { id: "areas", label: "05 Research Areas" },
-                { id: "media", label: "06 Media & Images" },
-                { id: "visibility", label: "07 Publishing" },
-              ].map((tab) => (
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              {formData.slug && (
+                <Link
+                  href={`/projects/${formData.slug}`}
+                  target="_blank"
+                  className={`hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
+                    isLight ? "border-slate-200 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                  }`}
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Preview Page</span>
+                </Link>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className={`px-4 py-2 text-xs font-semibold rounded-xl border transition ${
+                  isLight ? "border-slate-300 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] cursor-pointer"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>Save Project</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Section Filter Bar */}
+          <div className={`p-2 rounded-2xl border flex items-center gap-1.5 overflow-x-auto ${cardBg}`}>
+            {[
+              { id: "all", label: "All Sections", icon: Layers },
+              { id: "basic", label: "01 Overview & Identity", icon: FileText },
+              { id: "science", label: "02 Scientific Content", icon: Target },
+              { id: "people", label: "03 Personnel & Partners", icon: Users },
+              { id: "areas", label: "04 Research Areas", icon: FlaskConical },
+              { id: "grant", label: "05 Status & Grant", icon: Calendar },
+              { id: "media", label: "06 Hero Media", icon: ImageIcon },
+              { id: "visibility", label: "07 Publishing", icon: Globe },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = editorSection === tab.id;
+              return (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-3 px-3 border-b-2 transition whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 font-bold"
-                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  onClick={() => setEditorSection(tab.id as any)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? "bg-emerald-600 text-white shadow-sm font-bold"
+                      : isLight
+                      ? "text-slate-600 hover:bg-slate-100"
+                      : "text-slate-400 hover:bg-slate-800"
                   }`}
                 >
-                  {tab.label}
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
+          </div>
 
-            {/* Form Content Area */}
-            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* TAB 1: BASIC INFO */}
-              {activeTab === "basic" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Project Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.title}
-                      onChange={handleTitleChange}
-                      placeholder="e.g. Microplastic Exposure in Freshwater Ecosystems"
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
+          {/* Form Content in 2-Column Spacious Layout */}
+          <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT MAIN CANVAS (COL-SPAN-8) */}
+            <div className="lg:col-span-8 space-y-6">
+              {/* 1. OVERVIEW & IDENTITY */}
+              {(editorSection === "all" || editorSection === "basic") && (
+                <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className={`text-base font-bold ${headingText}`}>
+                        01. General Overview &amp; Narrative
+                      </h2>
+                      <p className={`text-xs ${subText}`}>
+                        Primary headline, slug identifier, and expanded contextual background.
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Slug (URL Identifier) <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-slate-400">/projects/</span>
+                  <div className="space-y-4">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Project Title <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="text"
                         required
-                        value={formData.slug}
-                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                        placeholder="microplastic-exposure-freshwater"
-                        className={`w-full px-3 py-2 text-xs font-mono rounded-lg border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Short Description (Summary Card) <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      required
-                      rows={2}
-                      value={formData.short_description}
-                      onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
-                      placeholder="Brief 1-2 sentence synopsis shown in the public research archive..."
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Full Project Overview &amp; Context
-                    </label>
-                    <textarea
-                      rows={6}
-                      value={formData.full_description}
-                      onChange={(e) => setFormData({ ...formData, full_description: e.target.value })}
-                      placeholder="Detailed background, scientific rationale, and expanded research narrative..."
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: STATUS & TIMELINE */}
-              {activeTab === "status" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        Project Status
-                      </label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value as ProjectStatus })}
-                        className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                      >
-                        <option value="ongoing">● Ongoing Research</option>
-                        <option value="completed">● Completed &amp; Published</option>
-                        <option value="archived">● Archived Past Grant</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        Timeline Display String
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.year}
-                        onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                        placeholder="e.g. 2025 — 2027"
-                        className={`w-full px-3.5 py-2.5 text-sm font-mono rounded-lg border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.start_date}
-                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                        className={`w-full px-3.5 py-2 text-sm rounded-lg border outline-none transition ${inputBg}`}
+                        value={formData.title}
+                        onChange={handleTitleChange}
+                        placeholder="e.g. Microplastic Exposure in Freshwater Ecosystems: Trophic Transfer & Biomagnification"
+                        className={`w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
 
                     <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        End Date
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Slug (URL Identifier) <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="date"
-                        value={formData.end_date}
-                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                        className={`w-full px-3.5 py-2 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        Funding Agency / Sponsor
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.funding_org}
-                        onChange={(e) => setFormData({ ...formData, funding_org: e.target.value })}
-                        placeholder="e.g. Ministry of Science & Technology (MoST)"
-                        className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-
-                    <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        Grant Amount
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.grant_amount}
-                        onChange={(e) => setFormData({ ...formData, grant_amount: e.target.value })}
-                        placeholder="e.g. BDT 3.6M ($32,000 USD)"
-                        className={`w-full px-3.5 py-2.5 text-sm font-mono rounded-lg border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Grant Info / Reference Number
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.funding_info}
-                      onChange={(e) => setFormData({ ...formData, funding_info: e.target.value })}
-                      placeholder="e.g. Competitive National Science & Technology Research Grant #MoST-ENV-2024"
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: SCIENTIFIC DETAILS */}
-              {activeTab === "science" && (
-                <div className="space-y-5 animate-in fade-in duration-150">
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Core Research Question
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={formData.research_question}
-                      onChange={(e) => setFormData({ ...formData, research_question: e.target.value })}
-                      placeholder="What primary scientific hypothesis or inquiry does this investigation resolve?"
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-
-                  {/* Dynamic Objectives List */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <label className={`text-xs font-semibold ${headingText}`}>
-                          Project Objectives (Numbered Milestones)
-                        </label>
-                        <p className={`text-[11px] ${subText}`}>
-                          Displayed as numbered milestone cards on the project detail page.
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-500">
+                          /projects/
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          value={formData.slug}
+                          onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                          placeholder="microplastic-exposure-freshwater-ecosystems"
+                          className={`flex-1 px-4 py-2.5 text-xs sm:text-sm font-mono rounded-xl border outline-none transition ${inputBg}`}
+                        />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, objectives: [...(formData.objectives || []), ""] })}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-[#34D399] border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 flex items-center gap-1.5 transition"
-                      >
-                        <PlusCircle className="w-3.5 h-3.5" /> Add Objective
-                      </button>
                     </div>
 
-                    {(!formData.objectives || formData.objectives.length === 0) ? (
-                      <div className={`p-4 rounded-xl border border-dashed text-center ${subText} text-xs space-y-2`}>
-                        <p>No objectives added yet for this project.</p>
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Short Description (Archive Summary Card) <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        required
+                        rows={2}
+                        value={formData.short_description}
+                        onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
+                        placeholder="Brief 1-2 sentence synopsis featured across the public project directory cards..."
+                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Full Project Overview &amp; Expanded Narrative
+                      </label>
+                      <textarea
+                        rows={7}
+                        value={formData.full_description}
+                        onChange={(e) => setFormData({ ...formData, full_description: e.target.value })}
+                        placeholder="Provide detailed background, scientific rationale, field sampling context, and comprehensive narrative for the project detail page..."
+                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition leading-relaxed ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. SCIENTIFIC CORE & METHODOLOGY */}
+              {(editorSection === "all" || editorSection === "science") && (
+                <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <Target className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className={`text-base font-bold ${headingText}`}>
+                        02. Scientific Core &amp; Methodology
+                      </h2>
+                      <p className={`text-xs ${subText}`}>
+                        Hypothesis, step-by-step milestones, analytical sequences, and field stations.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Core Research Question / Hypothesis
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={formData.research_question}
+                        onChange={(e) => setFormData({ ...formData, research_question: e.target.value })}
+                        placeholder="What primary scientific hypothesis or investigative question does this grant resolve?"
+                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+
+                    {/* Dynamic Milestone Objectives */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div>
+                          <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                            Project Objectives &amp; Milestones
+                          </label>
+                          <p className={`text-[11px] ${subText}`}>
+                            Rendered as ordered milestone cards on public project detail page.
+                          </p>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setFormData({ ...formData, objectives: [""] })}
-                          className="text-xs font-semibold text-emerald-600 dark:text-[#34D399] underline"
+                          onClick={() => setFormData({ ...formData, objectives: [...(formData.objectives || []), ""] })}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 flex items-center gap-1.5 transition cursor-pointer"
                         >
-                          + Add first objective
+                          <PlusCircle className="w-3.5 h-3.5" />
+                          <span>Add Milestone</span>
                         </button>
                       </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {formData.objectives.map((obj, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <span className="text-xs font-mono font-bold text-slate-400 w-6 shrink-0 text-center">
-                              {String(idx + 1).padStart(2, "0")}
-                            </span>
+
+                      {(!formData.objectives || formData.objectives.length === 0) ? (
+                        <div className={`p-5 rounded-2xl border border-dashed text-center ${subText} text-xs space-y-2`}>
+                          <p>No objectives configured yet.</p>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, objectives: [""] })}
+                            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 underline"
+                          >
+                            + Add first objective
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {formData.objectives.map((obj, idx) => (
+                            <div key={idx} className="flex items-center gap-2.5">
+                              <span className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                                {String(idx + 1).padStart(2, "0")}
+                              </span>
+                              <input
+                                type="text"
+                                value={obj}
+                                onChange={(e) => {
+                                  const updated = [...formData.objectives];
+                                  updated[idx] = e.target.value;
+                                  setFormData({ ...formData, objectives: updated });
+                                }}
+                                placeholder={`Milestone Objective ${idx + 1}...`}
+                                className={`flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = formData.objectives.filter((_, i) => i !== idx);
+                                  setFormData({ ...formData, objectives: updated });
+                                }}
+                                className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
+                                title="Remove milestone"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Methodology */}
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                        Methodology Sequence
+                      </label>
+                      <p className={`text-[11px] ${subText} mb-2`}>
+                        Analytical workflow sequence. Use &quot;→&quot; to demarcate progressive phases.
+                      </p>
+                      <textarea
+                        rows={3}
+                        value={formData.methodology}
+                        onChange={(e) => setFormData({ ...formData, methodology: e.target.value })}
+                        placeholder="e.g. NOAA manta trawl sampling → Alkaline KOH tissue digestion → μ-FTIR spectral mapping → Toxicogenomic biomarker profiling"
+                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+
+                    {/* Study Area & Deliverables Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                          Study Area / Location Name
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.study_area}
+                          onChange={(e) => setFormData({ ...formData, study_area: e.target.value })}
+                          placeholder="e.g. Meghna River Estuary & Coastal Transects"
+                          className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                          Outputs &amp; Deliverables
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.outputs}
+                          onChange={(e) => setFormData({ ...formData, outputs: e.target.value })}
+                          placeholder="e.g. 3 Peer Papers, 1 Open Spectral Library, Policy Brief"
+                          className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                        Study Area Detailed Description &amp; GPS Network
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={formData.study_area_description}
+                        onChange={(e) => setFormData({ ...formData, study_area_description: e.target.value })}
+                        placeholder="Geographic coordinates, environmental conditions, and sampling station network details..."
+                        className={`w-full px-4 py-3 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. PERSONNEL & COLLABORATING PARTNERS */}
+              {(editorSection === "all" || editorSection === "people") && (
+                <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className={`text-base font-bold ${headingText}`}>
+                        03. Personnel &amp; Global Collaborators
+                      </h2>
+                      <p className={`text-xs ${subText}`}>
+                        Lab investigators assigned to project and collaborating institutional partners.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Researcher Assignment */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                          Lab Researchers &amp; Investigators
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              researcher_assignments: [
+                                ...formData.researcher_assignments,
+                                { person_id: SEED_RESEARCHERS[0].id, role_in_project: "Researcher" },
+                              ],
+                            })
+                          }
+                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" /> Assign Person
+                        </button>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {formData.researcher_assignments.map((assignment, idx) => (
+                          <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                            <select
+                              value={assignment.person_id}
+                              onChange={(e) => {
+                                const updated = [...formData.researcher_assignments];
+                                updated[idx].person_id = e.target.value;
+                                setFormData({ ...formData, researcher_assignments: updated });
+                              }}
+                              className={`w-full sm:w-1/2 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            >
+                              {SEED_RESEARCHERS.map((person) => (
+                                <option key={person.id} value={person.id}>
+                                  {person.name} ({person.position})
+                                </option>
+                              ))}
+                            </select>
+
                             <input
                               type="text"
-                              value={obj}
+                              value={assignment.role_in_project}
                               onChange={(e) => {
-                                const updated = [...formData.objectives];
-                                updated[idx] = e.target.value;
-                                setFormData({ ...formData, objectives: updated });
+                                const updated = [...formData.researcher_assignments];
+                                updated[idx].role_in_project = e.target.value;
+                                setFormData({ ...formData, researcher_assignments: updated });
                               }}
-                              placeholder={`Objective ${idx + 1}...`}
-                              className={`flex-1 px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
+                              placeholder="Role (e.g. Principal Investigator, Lead Analyst)"
+                              className={`w-full sm:flex-1 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none transition ${inputBg}`}
                             />
+
                             <button
                               type="button"
                               onClick={() => {
-                                const updated = formData.objectives.filter((_, i) => i !== idx);
-                                setFormData({ ...formData, objectives: updated });
+                                const updated = formData.researcher_assignments.filter((_, i) => i !== idx);
+                                setFormData({ ...formData, researcher_assignments: updated });
                               }}
-                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition"
-                              title="Delete this objective"
+                              className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Methodology */}
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Methodology Sequence
-                    </label>
-                    <p className={`text-[11px] ${subText} mb-2`}>
-                      Describe the analytical sequence. Use &quot;→&quot; to separate workflow phases.
-                    </p>
-                    <textarea
-                      rows={3}
-                      value={formData.methodology}
-                      onChange={(e) => setFormData({ ...formData, methodology: e.target.value })}
-                      placeholder="e.g. NOAA manta trawl sampling → Alkaline KOH tissue digestion → μ-FTIR spectral mapping → Toxicogenomic biomarker profiling"
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-
-                  {/* Study Area */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        Study Area / Location Name
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.study_area}
-                        onChange={(e) => setFormData({ ...formData, study_area: e.target.value })}
-                        placeholder="e.g. Meghna River Estuary & Coastal Transects"
-                        className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                        Outputs &amp; Deliverables
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.outputs}
-                        onChange={(e) => setFormData({ ...formData, outputs: e.target.value })}
-                        placeholder="e.g. 3 Peer Papers, 1 Open Spectral Library, Policy Brief"
-                        className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Study Area Detailed Description
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={formData.study_area_description}
-                      onChange={(e) => setFormData({ ...formData, study_area_description: e.target.value })}
-                      placeholder="Geographic coordinates, environmental conditions, and sampling station network details..."
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: PEOPLE & COLLABORATORS */}
-              {activeTab === "people" && (
-                <div className="space-y-6 animate-in fade-in duration-150">
-                  {/* Researcher Assignment */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className={`text-xs font-semibold ${headingText}`}>
-                        Assigned Researchers &amp; Roles
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            researcher_assignments: [
-                              ...formData.researcher_assignments,
-                              { person_id: SEED_RESEARCHERS[0].id, role_in_project: "Researcher" },
-                            ],
-                          })
-                        }
-                        className="text-xs font-mono text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                      >
-                        <PlusCircle className="w-3.5 h-3.5" /> Assign Person
-                      </button>
                     </div>
 
-                    <div className="space-y-2">
-                      {formData.researcher_assignments.map((assignment, idx) => (
-                        <div key={idx} className="flex flex-col sm:flex-row items-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
-                          <select
-                            value={assignment.person_id}
-                            onChange={(e) => {
-                              const updated = [...formData.researcher_assignments];
-                              updated[idx].person_id = e.target.value;
-                              setFormData({ ...formData, researcher_assignments: updated });
-                            }}
-                            className={`w-full sm:w-1/2 px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-                          >
-                            {SEED_RESEARCHERS.map((person) => (
-                              <option key={person.id} value={person.id}>
-                                {person.name} ({person.position})
-                              </option>
-                            ))}
-                          </select>
+                    {/* Collaborating Institutions */}
+                    <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className={`text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                          Collaborating Institutions &amp; Partners
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              collaborators: [
+                                ...formData.collaborators,
+                                { name: "", institution: "", role: "Collaborating Partner" },
+                              ],
+                            })
+                          }
+                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" /> Add Partner
+                        </button>
+                      </div>
 
-                          <input
-                            type="text"
-                            value={assignment.role_in_project}
-                            onChange={(e) => {
-                              const updated = [...formData.researcher_assignments];
-                              updated[idx].role_in_project = e.target.value;
-                              setFormData({ ...formData, researcher_assignments: updated });
-                            }}
-                            placeholder="Role in this project (e.g. Lead Analyst)"
-                            className={`w-full sm:flex-1 px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = formData.researcher_assignments.filter((_, i) => i !== idx);
-                              setFormData({ ...formData, researcher_assignments: updated });
-                            }}
-                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Collaborating Institutions */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className={`text-xs font-semibold ${headingText}`}>
-                        Collaborating Institutions &amp; Partners
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            collaborators: [
-                              ...formData.collaborators,
-                              { name: "", institution: "", role: "Collaborator" },
-                            ],
-                          })
-                        }
-                        className="text-xs font-mono text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                      >
-                        <PlusCircle className="w-3.5 h-3.5" /> Add Partner
-                      </button>
-                    </div>
-
-                    <div className="space-y-2">
-                      {formData.collaborators.map((collab, idx) => (
-                        <div key={idx} className="flex flex-col sm:flex-row items-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
-                          <input
-                            type="text"
-                            value={collab.name}
-                            onChange={(e) => {
-                              const updated = [...formData.collaborators];
-                              updated[idx].name = e.target.value;
-                              setFormData({ ...formData, collaborators: updated });
-                            }}
-                            placeholder="Organization / Institution Name"
-                            className={`w-full sm:w-1/3 px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-                          />
-                          <input
-                            type="text"
-                            value={collab.institution}
-                            onChange={(e) => {
-                              const updated = [...formData.collaborators];
-                              updated[idx].institution = e.target.value;
-                              setFormData({ ...formData, collaborators: updated });
-                            }}
-                            placeholder="Department / Division"
-                            className={`w-full sm:w-1/3 px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-                          />
-                          <input
-                            type="text"
-                            value={collab.role}
-                            onChange={(e) => {
-                              const updated = [...formData.collaborators];
-                              updated[idx].role = e.target.value;
-                              setFormData({ ...formData, collaborators: updated });
-                            }}
-                            placeholder="Partnership Role"
-                            className={`w-full sm:flex-1 px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = formData.collaborators.filter((_, i) => i !== idx);
-                              setFormData({ ...formData, collaborators: updated });
-                            }}
-                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
+                      <div className="space-y-2.5">
+                        {formData.collaborators.map((collab, idx) => (
+                          <div key={idx} className="flex flex-col sm:flex-row items-center gap-2.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                            <input
+                              type="text"
+                              value={collab.name}
+                              onChange={(e) => {
+                                const updated = [...formData.collaborators];
+                                updated[idx].name = e.target.value;
+                                setFormData({ ...formData, collaborators: updated });
+                              }}
+                              placeholder="Organization / Institution Name"
+                              className={`w-full sm:w-1/3 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                            <input
+                              type="text"
+                              value={collab.institution}
+                              onChange={(e) => {
+                                const updated = [...formData.collaborators];
+                                updated[idx].institution = e.target.value;
+                                setFormData({ ...formData, collaborators: updated });
+                              }}
+                              placeholder="Department / Division"
+                              className={`w-full sm:w-1/3 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                            <input
+                              type="text"
+                              value={collab.role}
+                              onChange={(e) => {
+                                const updated = [...formData.collaborators];
+                                updated[idx].role = e.target.value;
+                                setFormData({ ...formData, collaborators: updated });
+                              }}
+                              placeholder="Partnership Role"
+                              className={`w-full sm:flex-1 px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = formData.collaborators.filter((_, i) => i !== idx);
+                                setFormData({ ...formData, collaborators: updated });
+                              }}
+                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 5: RESEARCH AREAS */}
-              {activeTab === "areas" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  <p className={`text-xs ${subText}`}>
-                    Select the thematic scientific disciplines and research pillars associated with this project:
-                  </p>
+              {/* 4. RESEARCH PILLARS & THEMATIC AREAS */}
+              {(editorSection === "all" || editorSection === "areas") && (
+                <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <FlaskConical className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className={`text-base font-bold ${headingText}`}>
+                        04. Research Focus Pillars
+                      </h2>
+                      <p className={`text-xs ${subText}`}>
+                        Check all thematic scientific areas that categorize this research.
+                      </p>
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     {researchAreas.map((area) => {
                       const isSelected = formData.research_area_ids.includes(area.id);
                       return (
@@ -1187,27 +876,27 @@ export default function AdminProjectsPage() {
                               });
                             }
                           }}
-                          className={`p-3.5 rounded-xl border cursor-pointer transition flex items-start gap-3 select-none ${
+                          className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
                             isSelected
-                              ? "border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 shadow-sm"
+                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 shadow-sm"
                               : isLight
-                              ? "border-slate-200 hover:border-slate-300 bg-white"
-                              : "border-slate-800 hover:border-slate-700 bg-slate-900/50"
+                              ? "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                              : "border-slate-800 hover:border-slate-700 bg-slate-900/40"
                           }`}
                         >
                           <div
-                            className={`w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 border ${
+                            className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border ${
                               isSelected
                                 ? "bg-emerald-600 border-emerald-600 text-white"
                                 : "border-slate-400 dark:border-slate-600"
                             }`}
                           >
-                            {isSelected && <Check className="w-3.5 h-3.5" />}
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
                           <div>
-                            <div className="font-semibold text-xs">{area.title}</div>
+                            <div className="font-bold text-xs sm:text-sm">{area.title}</div>
                             {area.description && (
-                              <div className={`text-[11px] ${subText} line-clamp-2 mt-0.5`}>
+                              <div className={`text-[11px] ${subText} line-clamp-2 mt-1`}>
                                 {area.description}
                               </div>
                             )}
@@ -1218,188 +907,663 @@ export default function AdminProjectsPage() {
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* TAB 6: MEDIA & IMAGES */}
-              {activeTab === "media" && (
-                <div className="space-y-5 animate-in fade-in duration-150">
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Project Hero Image
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-4 items-start">
-                      {/* Image Preview */}
-                      <div className="w-full sm:w-48 h-32 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative border border-slate-300 dark:border-slate-700 shrink-0">
-                        {formData.hero_image ? (
-                          <Image
-                            src={formData.hero_image}
-                            alt="Hero Preview"
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1">
-                            <Upload className="w-6 h-6" />
-                            <span className="text-[10px] font-mono">No image</span>
-                          </div>
-                        )}
+            {/* RIGHT INSPECTOR PANEL (COL-SPAN-4 / STICKY SIDEBAR) */}
+            <div className="lg:col-span-4 space-y-6">
+              {/* 5. PUBLISHING & VISIBILITY */}
+              {(editorSection === "all" || editorSection === "visibility") && (
+                <div className={`p-6 rounded-3xl border space-y-4 ${cardBg}`}>
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <Globe className="w-4 h-4 text-emerald-500" />
+                    <h3 className={`text-sm font-bold ${headingText}`}>
+                      Publishing &amp; Spotlight
+                    </h3>
+                  </div>
+
+                  {/* Public Status Toggle */}
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800">
+                    <div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">
+                        Public Status
                       </div>
-
-                      {/* Upload and URL controls */}
-                      <div className="flex-1 space-y-3 w-full">
-                        <div>
-                          <label className={`block text-[11px] font-mono ${subText} mb-1`}>
-                            Upload file to Supabase Storage (bucket: project-media)
-                          </label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageFile}
-                            disabled={uploadingImage}
-                            className={`w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText}`}
-                          />
-                          {uploadingImage && (
-                            <div className="flex items-center gap-2 text-xs text-emerald-600 mt-1">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading to storage...
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className={`block text-[11px] font-mono ${subText} mb-1`}>
-                            Or Direct Image URL
-                          </label>
-                          <input
-                            type="url"
-                            value={formData.hero_image}
-                            onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
-                            placeholder="https://..."
-                            className={`w-full px-3 py-2 text-xs rounded-lg border outline-none transition ${inputBg}`}
-                          />
-                        </div>
+                      <div className={`text-[11px] ${subText}`}>
+                        {formData.is_published ? "Live on public web" : "Hidden draft only"}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, is_published: !formData.is_published })}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        formData.is_published
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-amber-600 text-white"
+                      }`}
+                    >
+                      {formData.is_published ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" /> PUBLISHED
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5" /> DRAFT
+                        </>
+                      )}
+                    </button>
                   </div>
 
-                  <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Image Alt Text
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.image_alt}
-                      onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
-                      placeholder="Descriptive text for accessibility & SEO..."
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none transition ${inputBg}`}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 7: VISIBILITY & ACTIONS */}
-              {activeTab === "visibility" && (
-                <div className="space-y-5 animate-in fade-in duration-150">
-                  <div className={`p-4 rounded-xl border ${isLight ? "bg-slate-50 border-slate-200" : "bg-slate-900/60 border-slate-800"}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white">
-                          Public Publication Status
-                        </div>
-                        <p className={`text-xs ${subText} mt-0.5`}>
-                          Draft projects are only visible to logged-in administrators and will never appear on the public portal.
-                        </p>
+                  {/* Featured Toggle */}
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200 dark:border-slate-800">
+                    <div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">
+                        Spotlight Feature
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, is_published: !formData.is_published })}
-                        className={`px-4 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center gap-2 ${
-                          formData.is_published
-                            ? "bg-emerald-600 text-white shadow-sm"
-                            : "bg-amber-600 text-white"
-                        }`}
-                      >
-                        {formData.is_published ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4" /> PUBLISHED
-                          </>
-                        ) : (
-                          <>
-                            <Lock className="w-4 h-4" /> DRAFT
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className={`p-4 rounded-xl border ${isLight ? "bg-slate-50 border-slate-200" : "bg-slate-900/60 border-slate-800"}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-white">
-                          Featured Research Spotlight
-                        </div>
-                        <p className={`text-xs ${subText} mt-0.5`}>
-                          Featured projects receive prominent editorial showcase on the homepage and top priority in explorer filters.
-                        </p>
+                      <div className={`text-[11px] ${subText}`}>
+                        Promoted on homepage
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
-                        className={`px-4 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center gap-2 ${
-                          formData.is_featured
-                            ? "bg-amber-500 text-slate-950 shadow-sm"
-                            : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                        }`}
-                      >
-                        <Star className={`w-4 h-4 ${formData.is_featured ? "fill-slate-950" : ""}`} />
-                        {formData.is_featured ? "FEATURED" : "STANDARD"}
-                      </button>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        formData.is_featured
+                          ? "bg-amber-500 text-slate-950 shadow-sm"
+                          : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      <Star className={`w-3.5 h-3.5 ${formData.is_featured ? "fill-slate-950" : ""}`} />
+                      <span>{formData.is_featured ? "FEATURED" : "STANDARD"}</span>
+                    </button>
                   </div>
 
+                  {/* Display Order */}
                   <div>
-                    <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
-                      Display Order Priority (Lower numbers appear first)
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Display Priority Order
                     </label>
                     <input
                       type="number"
                       value={formData.display_order}
                       onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
-                      className={`w-32 px-3.5 py-2 text-sm font-mono rounded-lg border outline-none transition ${inputBg}`}
+                      className={`w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                    <p className={`text-[10px] ${subText} mt-1`}>
+                      Lower numbers appear first in the public explorer.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 6. STATUS, GRANT & TIMELINE */}
+              {(editorSection === "all" || editorSection === "grant") && (
+                <div className={`p-6 rounded-3xl border space-y-4 ${cardBg}`}>
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <Calendar className="w-4 h-4 text-emerald-500" />
+                    <h3 className={`text-sm font-bold ${headingText}`}>
+                      Status &amp; Grant Funding
+                    </h3>
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Project Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as ProjectStatus })}
+                      className={`w-full px-3.5 py-2.5 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                    >
+                      <option value="ongoing">● Ongoing Research</option>
+                      <option value="completed">● Completed &amp; Published</option>
+                      <option value="archived">● Archived Past Grant</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Timeline Display
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.year}
+                      onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                      placeholder="e.g. 2025 — 2027"
+                      className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.start_date}
+                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${headingText}`}>
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.end_date}
+                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Funding Agency / Sponsor
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.funding_org}
+                      onChange={(e) => setFormData({ ...formData, funding_org: e.target.value })}
+                      placeholder="e.g. Ministry of Science & Technology (MoST)"
+                      className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Grant Amount
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.grant_amount}
+                      onChange={(e) => setFormData({ ...formData, grant_amount: e.target.value })}
+                      placeholder="e.g. BDT 3.6M ($32,000 USD)"
+                      className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Grant Reference / Info
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.funding_info}
+                      onChange={(e) => setFormData({ ...formData, funding_info: e.target.value })}
+                      placeholder="e.g. National Grant #MoST-ENV-2024"
+                      className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
                     />
                   </div>
                 </div>
               )}
 
-              {/* Form Footer Action Buttons */}
-              <div className={`pt-4 border-t flex items-center justify-between shrink-0 ${isLight ? "border-slate-200" : "border-slate-800"}`}>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-lg border transition ${
-                    isLight ? "border-slate-300 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
-                  }`}
-                >
-                  Cancel
-                </button>
+              {/* 7. HERO BANNER & MEDIA */}
+              {(editorSection === "all" || editorSection === "media") && (
+                <div className={`p-6 rounded-3xl border space-y-4 ${cardBg}`}>
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <ImageIcon className="w-4 h-4 text-emerald-500" />
+                    <h3 className={`text-sm font-bold ${headingText}`}>
+                      Hero Banner &amp; Image
+                    </h3>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="px-6 py-2 text-xs md:text-sm font-semibold text-white bg-[#14532D] hover:bg-[#0F766E] rounded-lg shadow-sm transition active:scale-[0.98] flex items-center gap-2"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" /> Saving...
-                      </>
+                  {/* Preview Canvas */}
+                  <div className="w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 relative border border-slate-200 dark:border-slate-800 shadow-inner">
+                    {formData.hero_image ? (
+                      <Image
+                        src={formData.hero_image}
+                        alt="Hero Preview"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 400px"
+                      />
                     ) : (
-                      <>
-                        <Check className="w-4 h-4" /> Save Project
-                      </>
+                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
+                        <Upload className="w-8 h-8 opacity-50" />
+                        <span className="text-xs font-mono">No Image Configured</span>
+                      </div>
                     )}
-                  </button>
+                  </div>
+
+                  {/* Supabase Storage Upload */}
+                  <div>
+                    <label className={`block text-[11px] font-mono ${subText} mb-1.5`}>
+                      Upload to Supabase Storage (bucket: project-media)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageFile}
+                      disabled={uploadingImage}
+                      className={`w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 ${subText} cursor-pointer`}
+                    />
+                    {uploadingImage && (
+                      <div className="flex items-center gap-2 text-xs text-emerald-600 mt-2 font-medium">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading image to storage...
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Direct URL */}
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Or Direct Image URL
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.hero_image}
+                      onChange={(e) => setFormData({ ...formData, hero_image: e.target.value })}
+                      placeholder="https://images.unsplash.com/..."
+                      className={`w-full px-3.5 py-2 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${headingText}`}>
+                      Image Alt Description (SEO)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.image_alt}
+                      onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
+                      placeholder="Descriptive accessibility label..."
+                      className={`w-full px-3.5 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                    />
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Bottom Save & Cancel Bar */}
+            <div className={`lg:col-span-12 p-6 rounded-3xl border flex items-center justify-between ${cardBg}`}>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className={`px-5 py-2.5 text-xs font-semibold rounded-xl border transition ${
+                  isLight ? "border-slate-300 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                ← Back to Project List
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] cursor-pointer"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving Project...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>Save Project Changes</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* 2. PROJECT DIRECTORY LIST VIEW                                            */
+        /* ========================================================================= */
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <FolderGit2 className="w-5 h-5" />
+                </span>
+                <h1 className={`text-2xl font-bold tracking-tight ${headingText}`}>
+                  Research Projects &amp; Grants CMS
+                </h1>
               </div>
-            </form>
+              <p className={`text-xs md:text-sm ${subText} mt-1.5`}>
+                Manage the laboratory&apos;s active and completed research projects. All changes dynamically reflect on the public research portal.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={loadData}
+                title="Refresh database"
+                className={`p-2.5 rounded-xl border transition-colors ${
+                  isLight ? "border-slate-200 hover:bg-slate-100 text-slate-600" : "border-slate-700 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
+
+              <Link
+                href="/projects"
+                target="_blank"
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold rounded-xl border transition-colors ${
+                  isLight ? "border-slate-300 bg-white hover:bg-slate-50 text-slate-700" : "border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                <span>View Public Portal</span>
+                <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
+              </Link>
+
+              <button
+                onClick={handleOpenAdd}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-[0.98] cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Research Project</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Status Notification */}
+          {statusNotification && (
+            <div
+              className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-sm animate-in fade-in duration-200 ${
+                statusNotification.type === "success"
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200"
+                  : "bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {statusNotification.type === "success" ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                )}
+                <span>{statusNotification.message}</span>
+              </div>
+              <button
+                onClick={() => setStatusNotification(null)}
+                className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-md"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Metrics Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className={`p-4 rounded-2xl border ${cardBg}`}>
+              <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Total Projects</span>
+              <div className="text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 font-mono">
+                {projects.length}
+              </div>
+            </div>
+            <div className={`p-4 rounded-2xl border ${cardBg}`}>
+              <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Ongoing</span>
+              <div className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400 font-mono">
+                {projects.filter((p) => p.status === "ongoing").length}
+              </div>
+            </div>
+            <div className={`p-4 rounded-2xl border ${cardBg}`}>
+              <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Completed</span>
+              <div className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400 font-mono">
+                {projects.filter((p) => p.status === "completed").length}
+              </div>
+            </div>
+            <div className={`p-4 rounded-2xl border ${cardBg}`}>
+              <span className={`text-xs font-mono uppercase tracking-wider ${subText}`}>Featured</span>
+              <div className="text-2xl font-bold mt-1 text-purple-600 dark:text-purple-400 font-mono">
+                {projects.filter((p) => p.is_featured).length}
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Filter Strip */}
+          <div className={`p-4 rounded-2xl border ${cardBg} space-y-3`}>
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full sm:w-80">
+                <Search className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 ${subText}`} />
+                <input
+                  type="text"
+                  placeholder="Search title, slug, area..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className={`px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                >
+                  <option value="all">Status: All</option>
+                  <option value="ongoing">Ongoing</option>
+                  <option value="completed">Completed</option>
+                  <option value="archived">Archived</option>
+                </select>
+
+                {/* Published Filter */}
+                <select
+                  value={publishedFilter}
+                  onChange={(e) => setPublishedFilter(e.target.value)}
+                  className={`px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                >
+                  <option value="all">Visibility: All</option>
+                  <option value="published">Published Only</option>
+                  <option value="draft">Draft Only</option>
+                </select>
+
+                {/* Featured Filter */}
+                <select
+                  value={featuredFilter}
+                  onChange={(e) => setFeaturedFilter(e.target.value)}
+                  className={`px-3 py-2 text-xs rounded-xl border outline-none transition ${inputBg}`}
+                >
+                  <option value="all">Spotlight: All</option>
+                  <option value="featured">Featured Only</option>
+                  <option value="standard">Standard Only</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
+            {isLoading ? (
+              <div className="p-16 text-center space-y-3">
+                <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
+                <p className={`text-xs font-mono ${subText}`}>Loading research projects database...</p>
+              </div>
+            ) : filteredProjects.length === 0 ? (
+              <div className="p-16 text-center space-y-4">
+                <FlaskConical className="w-12 h-12 text-slate-400 mx-auto opacity-40" />
+                <div className={`text-sm font-semibold ${headingText}`}>No research projects found</div>
+                <p className={`text-xs ${subText} max-w-sm mx-auto`}>
+                  {searchQuery ? "Try refining your search query or reset the active filter options." : "Click below to initialize your first research project."}
+                </p>
+                <button
+                  onClick={handleOpenAdd}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Research Project</span>
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className={`border-b text-[11px] font-mono uppercase tracking-wider ${isLight ? "bg-slate-50/80 text-slate-500 border-slate-200" : "bg-[#0B1120] text-slate-400 border-slate-800"}`}>
+                      <th className="py-3 px-4">Thumbnail</th>
+                      <th className="py-3 px-4">Title &amp; Path</th>
+                      <th className="py-3 px-4">Research Areas</th>
+                      <th className="py-3 px-4">Timeline &amp; Grant</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-center">Public</th>
+                      <th className="py-3 px-4 text-center">Featured</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
+                    {filteredProjects.map((proj) => (
+                      <tr
+                        key={proj.id}
+                        className={`transition-colors ${
+                          isLight ? "hover:bg-slate-50/80" : "hover:bg-slate-900/50"
+                        }`}
+                      >
+                        {/* Thumbnail */}
+                        <td className="py-3.5 px-4">
+                          <div className="w-14 h-12 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 relative border border-slate-300 dark:border-slate-700 shrink-0">
+                            {proj.hero_image ? (
+                              <Image
+                                src={proj.hero_image}
+                                alt={proj.title}
+                                fill
+                                className="object-cover"
+                                sizes="56px"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                <FlaskConical className="w-5 h-5" />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Title & Slug */}
+                        <td className="py-3.5 px-4 max-w-sm">
+                          <div className="font-semibold text-sm line-clamp-1 text-slate-900 dark:text-white">
+                            {proj.title}
+                          </div>
+                          <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 truncate mt-0.5">
+                            /projects/{proj.slug}
+                          </div>
+                          <div className={`text-[11px] ${subText} line-clamp-1 mt-1`}>
+                            {proj.short_description}
+                          </div>
+                        </td>
+
+                        {/* Research Areas */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {proj.research_areas && proj.research_areas.length > 0 ? (
+                              proj.research_areas.map((a) => (
+                                <span
+                                  key={a.id}
+                                  className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                                >
+                                  {a.title}
+                                </span>
+                              ))
+                            ) : (
+                              <span className={`text-[11px] ${subText} italic`}>Unassigned</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Timeline & Funding */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{proj.year || "2025 — 2027"}</span>
+                          </div>
+                          {proj.funding_org && (
+                            <div className={`text-[11px] ${subText} flex items-center gap-1 mt-1 truncate max-w-[180px]`}>
+                              <Building2 className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{proj.funding_org}</span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="py-3.5 px-4 text-center">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider ${
+                              proj.status === "ongoing"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                                : proj.status === "completed"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700"
+                            }`}
+                          >
+                            ● {proj.status}
+                          </span>
+                        </td>
+
+                        {/* Published Toggle */}
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => handleTogglePublish(proj.id, proj.is_published)}
+                            disabled={isPending}
+                            title={proj.is_published ? "Click to set as Draft" : "Click to Publish"}
+                            className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                              proj.is_published
+                                ? "text-emerald-600 hover:bg-emerald-500/10"
+                                : "text-amber-500 hover:bg-amber-500/10"
+                            }`}
+                          >
+                            {proj.is_published ? (
+                              <CheckCircle2 className="w-5 h-5" />
+                            ) : (
+                              <Lock className="w-5 h-5 opacity-70" />
+                            )}
+                          </button>
+                        </td>
+
+                        {/* Featured Toggle */}
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={() => handleToggleFeatured(proj.id, proj.is_featured)}
+                            disabled={isPending}
+                            title={proj.is_featured ? "Featured Spotlight" : "Standard Project"}
+                            className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                              proj.is_featured
+                                ? "text-amber-500 hover:bg-amber-500/10"
+                                : "text-slate-400 hover:bg-slate-500/10 opacity-50 hover:opacity-100"
+                            }`}
+                          >
+                            <Star className={`w-5 h-5 ${proj.is_featured ? "fill-amber-400" : ""}`} />
+                          </button>
+                        </td>
+
+                        {/* Row Actions */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Link
+                              href={`/projects/${proj.slug}`}
+                              target="_blank"
+                              title="View Public Detail Page"
+                              className={`p-2 rounded-xl transition ${
+                                isLight ? "hover:bg-slate-200 text-slate-600" : "hover:bg-slate-800 text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Link>
+
+                            <button
+                              onClick={() => handleOpenEdit(proj)}
+                              title="Edit Project Details (Full Page)"
+                              className="p-2 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition cursor-pointer"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => setDeleteConfirmId(proj.id)}
+                              title="Delete Project"
+                              className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1422,7 +1586,7 @@ export default function AdminProjectsPage() {
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className={`px-4 py-2 text-xs font-semibold rounded-lg border transition ${
+                className={`px-4 py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
                   isLight ? "border-slate-300 hover:bg-slate-100 text-slate-700" : "border-slate-700 hover:bg-slate-800 text-slate-300"
                 }`}
               >
@@ -1430,7 +1594,7 @@ export default function AdminProjectsPage() {
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition"
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition cursor-pointer"
               >
                 Delete Project
               </button>
