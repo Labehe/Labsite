@@ -9,6 +9,7 @@ import {
   GalleryItem,
   getCategoryBadgeColor
 } from "@/lib/gallery-store";
+import { safeCompressImage } from "@/lib/image-compression";
 import {
   Image as ImageIcon,
   Plus,
@@ -17,7 +18,8 @@ import {
   CheckCircle,
   Loader2,
   MapPin,
-  Calendar
+  Calendar,
+  Upload
 } from "lucide-react";
 
 export default function AdminGalleryPage() {
@@ -219,14 +221,50 @@ export default function AdminGalleryPage() {
               </div>
 
               <div>
-                <label className={`block font-semibold mb-1 ${subText}`}>Image URL *</label>
+                <label className={`block font-semibold mb-1 ${subText}`}>Image File / URL *</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="px-3 py-1.5 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 font-semibold cursor-pointer text-xs flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Image from Device</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const compressed = await safeCompressImage(file, {
+                              maxWidth: 1200,
+                              maxHeight: 1200,
+                              quality: 0.84,
+                            });
+                            setFormState((prev) => ({ ...prev, image_url: compressed }));
+                          } catch (err) {
+                            console.error("Image upload failed:", err);
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
                 <input
-                  type="url"
+                  type="text"
                   required
+                  placeholder="https://... or uploaded image"
                   value={formState.image_url}
                   onChange={(e) => setFormState({ ...formState, image_url: e.target.value })}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border outline-none ${inputBg}`}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border outline-none font-mono text-xs ${inputBg}`}
                 />
+                {formState.image_url && (
+                  <div className="mt-2 relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                    <img
+                      src={formState.image_url}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

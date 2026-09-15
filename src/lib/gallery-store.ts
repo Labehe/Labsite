@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { idbGet, idbSet, idbDelete, safeLocalStorageSet, safeLocalStorageGet } from "@/lib/storage/idb-storage";
 
 export interface GalleryItem {
   id: string;
@@ -99,30 +100,20 @@ export function getCategoryBadgeColor(category: string): string {
 export function getStoredGalleryItems(): GalleryItem[] {
   if (typeof window === "undefined") return DEFAULT_GALLERY_ITEMS;
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
+    const raw = safeLocalStorageGet<GalleryItem[]>(LOCAL_STORAGE_KEY);
+    if (raw && Array.isArray(raw) && raw.length > 0) {
+      return raw;
     }
   } catch (e) {
-    console.error("Error reading gallery from localStorage:", e);
+    console.error("Error reading gallery from storage:", e);
   }
   return DEFAULT_GALLERY_ITEMS;
 }
 
-export function setStoredGalleryItems(items: GalleryItem[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items));
-    window.dispatchEvent(new CustomEvent("ecotox:gallery-updated", { detail: items }));
-  } catch (e) {
-    console.error("Error saving gallery to localStorage:", e);
-  }
-}
+export async function getGalleryItemsAsync(): Promise<GalleryItem[]> {
+  if (typeof window === "undefined") return DEFAULT_GALLERY_ITEMS;
 
-export async function fetchGalleryItems(): Promise<GalleryItem[]> {
+  // 1. Try Supabase
   try {
     const supabase = createClient();
     const { data, error } = await (supabase as any).from("gallery_events").select("*");
@@ -136,42 +127,63 @@ export async function fetchGalleryItems(): Promise<GalleryItem[]> {
         description: d.description || "",
         image_url: d.image_url || "",
       }));
-      setStoredGalleryItems(mapped);
+      await setStoredGalleryItems(mapped);
       return mapped;
     }
   } catch {
-    // Ignore Supabase error and fallback to localStorage
+    // Continue to IndexedDB
   }
-  return getStoredGalleryItems();
+
+  // 2. Try IndexedDB (holds user's uploaded images)
+  try {
+    const idbData = await idbGet<GalleryItem[]>(LOCAL_STORAGE_KEY);
+    if (Array.isArray(idbData) && idbData.length > 0) {
+      return idbData;
+    }
+  } catch (err) {
+    console.warn("IndexedDB gallery fetch error:", err);
+  }
+
+  // 3. Fallback to localStorage
+  const localData = safeLocalStorageGet<GalleryItem[]>(LOCAL_STORAGE_KEY);
+  if (Array.isArray(localData) && localData.length > 0) {
+    return localData;
+  }
+
+  return DEFAULT_GALLERY_ITEMS;
+}
+
+export async function setStoredGalleryItems(items: GalleryItem[]): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    await idbSet(LOCAL_STORAGE_KEY, items);
+    safeLocalStorageSet(LOCAL_STORAGE_KEY, items);
+    window.dispatchEvent(new CustomEvent("ecotox:gallery-updated", { detail: items }));
+  } catch (e) {
+    console.error("Error saving gallery to storage:", e);
+  }
+}
+
+export async function fetchGalleryItems(): Promise<GalleryItem[]> {
+  return await getGalleryItemsAsync();
 }
 
 export async function saveGalleryItem(item: Partial<GalleryItem> & { title: string; image_url: string }): Promise<GalleryItem> {
-  const current = getStoredGalleryItems();
+  const current = await getGalleryItemsAsync();
+  let updatedList = [...current];
   let updatedItem: GalleryItem;
 
-  if (item.id) {
-    const index = current.findIndex((i) => i.id === item.id);
-    if (index !== -1) {
-      updatedItem = {
-        ...current[index],
-        ...item,
-      };
-      current[index] = updatedItem;
-    } else {
-      updatedItem = {
-        id: item.id,
-        title: item.title,
-        category: item.category || "Field Expedition",
-        location: item.location || "",
-        date_text: item.date_text || "",
-        description: item.description || "",
-        image_url: item.image_url,
-      };
-      current.unshift(updatedItem);
-    }
+  const existsIdx = item.id ? updatedList.findIndex((i) => i.id === item.id) : -1;
+
+  if (existsIdx !== -1) {
+    updatedItem = {
+      ...updatedList[existsIdx],
+      ...item,
+    };
+    updatedList[existsIdx] = updatedItem;
   } else {
     updatedItem = {
-      id: "gal-" + Date.now().toString(),
+      id: item.id || "gal-" + Date.now().toString(),
       title: item.title,
       category: item.category || "Field Expedition",
       location: item.location || "",
@@ -179,10 +191,10 @@ export async function saveGalleryItem(item: Partial<GalleryItem> & { title: stri
       description: item.description || "",
       image_url: item.image_url,
     };
-    current.unshift(updatedItem);
+    updatedList.unshift(updatedItem);
   }
 
-  setStoredGalleryItems([...current]);
+  await setStoredGalleryItems(updatedList);
 
   // Attempt Supabase sync
   try {
@@ -202,16 +214,16 @@ export async function saveGalleryItem(item: Partial<GalleryItem> & { title: stri
       await (supabase as any).from("gallery_events").insert([payload]);
     }
   } catch {
-    // Fallback succeeds locally
+    // Fallback succeeds locally in IDB
   }
 
   return updatedItem;
 }
 
 export async function deleteGalleryItem(id: string): Promise<boolean> {
-  const current = getStoredGalleryItems();
+  const current = await getGalleryItemsAsync();
   const next = current.filter((i) => i.id !== id);
-  setStoredGalleryItems(next);
+  await setStoredGalleryItems(next);
 
   try {
     const supabase = createClient();
@@ -228,20 +240,25 @@ export function useGalleryItems() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initial load from localStorage
-    setItems(getStoredGalleryItems());
+    // 1. Synchronously load from localStorage cache
+    const initial = getStoredGalleryItems();
+    setItems(initial);
     setLoading(false);
 
-    // Try fetching remote
-    fetchGalleryItems().then((fetched) => {
-      setItems(fetched);
+    // 2. Asynchronously load latest from IndexedDB / Remote
+    getGalleryItemsAsync().then((latest) => {
+      if (Array.isArray(latest) && latest.length > 0) {
+        setItems(latest);
+      }
     });
 
     const handleUpdate = (e: any) => {
-      if (e.detail) {
+      if (e.detail && Array.isArray(e.detail)) {
         setItems(e.detail);
       } else {
-        setItems(getStoredGalleryItems());
+        getGalleryItemsAsync().then((latest) => {
+          if (Array.isArray(latest)) setItems(latest);
+        });
       }
     };
 

@@ -51,6 +51,8 @@ import { createClient } from "@/lib/supabase/client";
 import { getTeamMembers, saveTeamMember, deleteTeamMember } from "@/lib/team/store";
 import { TeamMember, TeamCategory, MemberPublication } from "@/lib/team/types";
 import { TEAM_CATEGORIES_META } from "@/lib/team/seed-data";
+import { safeCompressImage } from "@/lib/image-compression";
+import { pruneOversizedLocalStorage } from "@/lib/storage/idb-storage";
 
 export default function AdminTeamPage() {
   const { theme } = useAdminTheme();
@@ -125,6 +127,12 @@ export default function AdminTeamPage() {
   const [awardsInput, setAwardsInput] = useState("");
   const [educationInput, setEducationInput] = useState("");
 
+  // Thesis section toggle states (determines which thesis tracks show up for this member)
+  const [hasOngoingThesis, setHasOngoingThesis] = useState(false);
+  const [hasUndergradThesis, setHasUndergradThesis] = useState(false);
+  const [hasMscThesis, setHasMscThesis] = useState(false);
+  const [hasPhdThesis, setHasPhdThesis] = useState(false);
+
   // Publication sub-form in editor
   const [pubForm, setPubForm] = useState<MemberPublication>({
     title: "",
@@ -147,6 +155,7 @@ export default function AdminTeamPage() {
   };
 
   useEffect(() => {
+    pruneOversizedLocalStorage();
     loadData();
   }, []);
 
@@ -191,6 +200,10 @@ export default function AdminTeamPage() {
     setSkillsInput("");
     setAwardsInput("");
     setEducationInput("");
+    setHasOngoingThesis(false);
+    setHasUndergradThesis(false);
+    setHasMscThesis(false);
+    setHasPhdThesis(false);
     setEditorSection("all");
     setIsEditing(true);
     setStatusMessage(null);
@@ -202,6 +215,10 @@ export default function AdminTeamPage() {
     setSkillsInput((member.skills || []).join(", "));
     setAwardsInput((member.awards || []).join("\n"));
     setEducationInput((member.education || []).join("\n"));
+    setHasOngoingThesis(Boolean(member.thesisTopic || member.advisor || member.expectedGraduation));
+    setHasUndergradThesis(Boolean(member.undergradThesis || member.undergradDescription));
+    setHasMscThesis(Boolean(member.mscThesis || member.mscDescription));
+    setHasPhdThesis(Boolean(member.phdThesis || member.phdDescription));
     setEditorSection("all");
     setIsEditing(true);
     setStatusMessage(null);
@@ -242,6 +259,8 @@ export default function AdminTeamPage() {
         formData.slug ||
         formData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
+      const isAlumniCategory = formData.category === "alumni";
+
       const payload: Partial<TeamMember> = {
         ...formData,
         slug,
@@ -249,6 +268,21 @@ export default function AdminTeamPage() {
         skills: skillsArray,
         awards: awardsArray,
         education: educationArray,
+        // Academic Theses & Projects: Clean up fields if track checkbox is not enabled
+        thesisTopic: hasOngoingThesis ? (formData.thesisTopic || "") : "",
+        advisor: hasOngoingThesis ? (formData.advisor || "") : "",
+        expectedGraduation: hasOngoingThesis ? (formData.expectedGraduation || "") : "",
+        undergradThesis: hasUndergradThesis ? (formData.undergradThesis || "") : "",
+        undergradDescription: hasUndergradThesis ? (formData.undergradDescription || "") : "",
+        mscThesis: hasMscThesis ? (formData.mscThesis || "") : "",
+        mscDescription: hasMscThesis ? (formData.mscDescription || "") : "",
+        phdThesis: hasPhdThesis ? (formData.phdThesis || "") : "",
+        phdDescription: hasPhdThesis ? (formData.phdDescription || "") : "",
+        // Alumni fields: Only retained if academic category is alumni
+        currentPosition: isAlumniCategory ? (formData.currentPosition || "") : "",
+        currentInstitution: isAlumniCategory ? (formData.currentInstitution || "") : "",
+        alumniYear: isAlumniCategory ? (formData.alumniYear || "") : "",
+        pastRole: isAlumniCategory ? (formData.pastRole || "") : "",
       };
 
       await saveTeamMember(payload);
@@ -311,8 +345,8 @@ export default function AdminTeamPage() {
 
   const handlePhotoUpload = async (file: File) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setStatusMessage({ type: "error", text: "Image file exceeds 5MB limit. Please upload a smaller image." });
+    if (file.size > 15 * 1024 * 1024) {
+      setStatusMessage({ type: "error", text: "Image file exceeds 15MB limit. Please choose a smaller image." });
       return;
     }
     setUploadingPhoto(true);
@@ -334,17 +368,19 @@ export default function AdminTeamPage() {
         console.warn("Cloud storage upload fallback:", e);
       }
 
-      // FileReader fallback
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setFormData((prev) => ({ ...prev, imageSrc: result }));
-        setStatusMessage({ type: "success", text: "Profile photo loaded and staged for saving!" });
-        setUploadingPhoto(false);
-      };
-      reader.readAsDataURL(file);
+      // High-performance client-side image compression fallback
+      const compressedDataUrl = await safeCompressImage(file, {
+        maxWidth: 800,
+        maxHeight: 800,
+        quality: 0.85,
+        mimeType: "image/jpeg",
+      });
+
+      setFormData((prev) => ({ ...prev, imageSrc: compressedDataUrl }));
+      setStatusMessage({ type: "success", text: "Profile photo optimized and staged for saving!" });
     } catch (err: any) {
-      setStatusMessage({ type: "error", text: "Failed to upload image: " + (err.message || String(err)) });
+      setStatusMessage({ type: "error", text: "Failed to process image: " + (err.message || String(err)) });
+    } finally {
       setUploadingPhoto(false);
     }
   };
@@ -488,7 +524,9 @@ export default function AdminTeamPage() {
               { id: "bio", label: "03 Bio & Research Focus", icon: FlaskConical },
               { id: "theses", label: "04 Theses & Projects", icon: BookOpen },
               { id: "publications", label: "05 Publications", icon: FileText },
-              { id: "alumni", label: "06 Alumni Placement", icon: Compass },
+              ...(formData.category === "alumni"
+                ? [{ id: "alumni", label: "06 Alumni Placement", icon: Compass }]
+                : []),
               { id: "social", label: "07 Social & Contact", icon: Globe },
               { id: "visibility", label: "08 Visibility & Order", icon: Star },
             ].map((tab) => {
@@ -570,7 +608,13 @@ export default function AdminTeamPage() {
                       </label>
                       <select
                         value={formData.category || "undergraduate"}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value as TeamCategory })}
+                        onChange={(e) => {
+                          const newCat = e.target.value as TeamCategory;
+                          setFormData((prev) => ({ ...prev, category: newCat }));
+                          if (newCat !== "alumni" && (editorSection as string) === "alumni") {
+                            setEditorSection("all");
+                          }
+                        }}
                         className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
                       >
                         {Object.entries(TEAM_CATEGORIES_META).map(([key, meta]) => (
@@ -779,34 +823,6 @@ export default function AdminTeamPage() {
                         className={`w-full px-4 py-2.5 text-xs font-mono rounded-xl border outline-none transition ${inputBg}`}
                       />
                     </div>
-
-                    {/* Quick Preset Portraits */}
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Quick Preset Sample Avatars
-                      </label>
-                      <div className="grid grid-cols-4 gap-2.5">
-                        {[
-                          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-                          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
-                          "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
-                          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
-                        ].map((presetUrl, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, imageSrc: presetUrl })}
-                            className={`aspect-square rounded-2xl overflow-hidden border-2 transition hover:scale-105 cursor-pointer ${
-                              formData.imageSrc === presetUrl
-                                ? "border-emerald-500 shadow-md"
-                                : "border-slate-300 dark:border-slate-700 hover:border-emerald-400"
-                            }`}
-                          >
-                            <img src={presetUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -917,7 +933,7 @@ export default function AdminTeamPage() {
 
             {/* 4. THESES & PROJECTS */}
             {(editorSection === "all" || editorSection === "theses") && (
-              <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
+              <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${cardBg}`}>
                 <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                     <BookOpen className="w-5 h-5" />
@@ -932,87 +948,265 @@ export default function AdminTeamPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Thesis Topic / Working Title
-                      </label>
+                {/* Track Selector Checkboxes */}
+                <div className="space-y-3">
+                  <label className={`block text-xs font-bold uppercase tracking-wider ${headingText}`}>
+                    Select Applicable Thesis / Research Tracks:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Ongoing / Working Topic Toggle */}
+                    <label
+                      className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all select-none ${
+                        hasOngoingThesis
+                          ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-900 dark:text-emerald-200 shadow-xs"
+                          : "bg-slate-50/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                      }`}
+                    >
                       <input
-                        type="text"
-                        value={formData.thesisTopic || ""}
-                        onChange={(e) => setFormData({ ...formData, thesisTopic: e.target.value })}
-                        placeholder="e.g. Assessment of microplastic loads in Meghna River"
-                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        type="checkbox"
+                        checked={hasOngoingThesis}
+                        onChange={(e) => setHasOngoingThesis(e.target.checked)}
+                        className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                       />
-                    </div>
+                      <div>
+                        <div className="text-xs font-bold">Active / Working Topic</div>
+                        <div className="text-[11px] opacity-75">Working title, advisor &amp; date</div>
+                      </div>
+                    </label>
 
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Principal Advisor / Mentor
-                      </label>
+                    {/* Undergrad Thesis Toggle */}
+                    <label
+                      className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all select-none ${
+                        hasUndergradThesis
+                          ? "bg-indigo-500/10 border-indigo-500/40 text-indigo-900 dark:text-indigo-200 shadow-xs"
+                          : "bg-slate-50/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                      }`}
+                    >
                       <input
-                        type="text"
-                        value={formData.advisor || ""}
-                        onChange={(e) => setFormData({ ...formData, advisor: e.target.value })}
-                        placeholder="e.g. Prof. Mohammad S. Kabir"
-                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        type="checkbox"
+                        checked={hasUndergradThesis}
+                        onChange={(e) => setHasUndergradThesis(e.target.checked)}
+                        className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                       />
-                    </div>
+                      <div>
+                        <div className="text-xs font-bold">Undergraduate Thesis</div>
+                        <div className="text-[11px] opacity-75">B.Sc. 4th-Year Capstone</div>
+                      </div>
+                    </label>
 
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Expected / Completion Date
-                      </label>
+                    {/* Master's Thesis Toggle */}
+                    <label
+                      className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all select-none ${
+                        hasMscThesis
+                          ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-900 dark:text-cyan-200 shadow-xs"
+                          : "bg-slate-50/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                      }`}
+                    >
                       <input
-                        type="text"
-                        value={formData.expectedGraduation || ""}
-                        onChange={(e) => setFormData({ ...formData, expectedGraduation: e.target.value })}
-                        placeholder="e.g. December 2026"
-                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        type="checkbox"
+                        checked={hasMscThesis}
+                        onChange={(e) => setHasMscThesis(e.target.checked)}
+                        className="mt-0.5 rounded text-cyan-600 focus:ring-cyan-500 w-4 h-4 cursor-pointer"
                       />
-                    </div>
-                  </div>
+                      <div>
+                        <div className="text-xs font-bold">Master's (M.Sc.) Thesis</div>
+                        <div className="text-[11px] opacity-75">Graduate dissertation</div>
+                      </div>
+                    </label>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Undergraduate Thesis
-                      </label>
+                    {/* Doctoral Thesis Toggle */}
+                    <label
+                      className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all select-none ${
+                        hasPhdThesis
+                          ? "bg-teal-500/10 border-teal-500/40 text-teal-900 dark:text-teal-200 shadow-xs"
+                          : "bg-slate-50/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
+                      }`}
+                    >
                       <input
-                        type="text"
-                        value={formData.undergradThesis || ""}
-                        onChange={(e) => setFormData({ ...formData, undergradThesis: e.target.value })}
-                        placeholder="B.Sc. Thesis Title"
-                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        type="checkbox"
+                        checked={hasPhdThesis}
+                        onChange={(e) => setHasPhdThesis(e.target.checked)}
+                        className="mt-0.5 rounded text-teal-600 focus:ring-teal-500 w-4 h-4 cursor-pointer"
                       />
-                    </div>
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Master's Thesis
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.mscThesis || ""}
-                        onChange={(e) => setFormData({ ...formData, mscThesis: e.target.value })}
-                        placeholder="M.Sc. Dissertation Title"
-                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
-                        Doctoral Thesis
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.phdThesis || ""}
-                        onChange={(e) => setFormData({ ...formData, phdThesis: e.target.value })}
-                        placeholder="Ph.D. Dissertation Title"
-                        className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
-                      />
-                    </div>
+                      <div>
+                        <div className="text-xs font-bold">Doctoral (Ph.D.) Thesis</div>
+                        <div className="text-[11px] opacity-75">Doctoral research dissertation</div>
+                      </div>
+                    </label>
                   </div>
                 </div>
+
+                {/* If none selected */}
+                {!hasOngoingThesis && !hasUndergradThesis && !hasMscThesis && !hasPhdThesis && (
+                  <div className="p-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center py-6 bg-slate-50/30 dark:bg-slate-900/20">
+                    <p className={`text-xs ${subText}`}>
+                      No thesis tracks selected. Check any of the boxes above to display input fields for that thesis level.
+                    </p>
+                  </div>
+                )}
+
+                {/* Active / Ongoing Topic Fields */}
+                {hasOngoingThesis && (
+                  <div className="p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-500/20 space-y-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Active / Ongoing Research Topic Details
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                          Thesis Topic / Working Title
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.thesisTopic || ""}
+                          onChange={(e) => setFormData({ ...formData, thesisTopic: e.target.value })}
+                          placeholder="e.g. Assessment of microplastic loads in Meghna River"
+                          className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                          Principal Advisor / Mentor
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.advisor || ""}
+                          onChange={(e) => setFormData({ ...formData, advisor: e.target.value })}
+                          placeholder="e.g. Prof. Mohammad S. Kabir"
+                          className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${headingText}`}>
+                          Expected / Completion Date
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.expectedGraduation || ""}
+                          onChange={(e) => setFormData({ ...formData, expectedGraduation: e.target.value })}
+                          placeholder="e.g. December 2026"
+                          className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Individual Thesis Inputs */}
+                {(hasUndergradThesis || hasMscThesis || hasPhdThesis) && (
+                  <div className="space-y-4 pt-1">
+                    {/* Undergrad Thesis */}
+                    {hasUndergradThesis && (
+                      <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-500/20 space-y-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          Undergraduate (B.Sc.) Thesis
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
+                              Thesis Title
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.undergradThesis || ""}
+                              onChange={(e) => setFormData({ ...formData, undergradThesis: e.target.value })}
+                              placeholder="e.g. Identification of Microplastic contamination in soil"
+                              className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
+                              Short Summary / Focus (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.undergradDescription || ""}
+                              onChange={(e) => setFormData({ ...formData, undergradDescription: e.target.value })}
+                              placeholder="e.g. Characterized sediment and soil polymer distributions."
+                              className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Master's Thesis */}
+                    {hasMscThesis && (
+                      <div className="p-4 rounded-2xl bg-cyan-50/40 dark:bg-cyan-950/10 border border-cyan-500/20 space-y-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-400 flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          Master of Science (M.Sc.) Thesis
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
+                              Thesis Title
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.mscThesis || ""}
+                              onChange={(e) => setFormData({ ...formData, mscThesis: e.target.value })}
+                              placeholder="e.g. Toxicological Impact of Synthetic Microfibers on Aquatic Biota"
+                              className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
+                              Short Summary / Focus (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.mscDescription || ""}
+                              onChange={(e) => setFormData({ ...formData, mscDescription: e.target.value })}
+                              placeholder="e.g. Evaluated bioaccumulation markers in freshwater teleosts."
+                              className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Doctoral Thesis */}
+                    {hasPhdThesis && (
+                      <div className="p-4 rounded-2xl bg-teal-50/40 dark:bg-teal-950/10 border border-teal-500/20 space-y-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5" />
+                          Doctoral (Ph.D.) Dissertation
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
+                              Dissertation Title
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.phdThesis || ""}
+                              onChange={(e) => setFormData({ ...formData, phdThesis: e.target.value })}
+                              placeholder="e.g. Environmental Fate and Nanoplastic Ecotoxicity in Estuarine Ecosystems"
+                              className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-xs font-semibold mb-1.5 ${headingText}`}>
+                              Short Summary / Focus (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.phdDescription || ""}
+                              onChange={(e) => setFormData({ ...formData, phdDescription: e.target.value })}
+                              placeholder="e.g. Developed novel chromatographic detection protocols."
+                              className={`w-full px-4 py-2.5 text-sm rounded-xl border outline-none transition ${inputBg}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1112,8 +1306,8 @@ export default function AdminTeamPage() {
               </div>
             )}
 
-            {/* 6. ALUMNI PLACEMENT */}
-            {(editorSection === "all" || editorSection === "alumni") && (
+            {/* 6. ALUMNI PLACEMENT (ONLY VISIBLE IF CATEGORY IS ALUMNI) */}
+            {formData.category === "alumni" && (editorSection === "all" || editorSection === "alumni") && (
               <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${cardBg}`}>
                 <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">

@@ -9,7 +9,11 @@ import {
   getStoredLandingData,
   saveLandingData,
   resetLandingData,
+  deepMerge,
+  sanitizeLandingData,
 } from "@/lib/landing-store";
+import { safeCompressImage } from "@/lib/image-compression";
+import { pruneOversizedLocalStorage, idbGet } from "@/lib/storage/idb-storage";
 import { getTeamMembers } from "@/lib/team/store";
 import {
   useGalleryItems,
@@ -82,30 +86,51 @@ export default function AdminLandingManagerPage() {
   });
 
   useEffect(() => {
-    setFormData(getStoredLandingData());
+    pruneOversizedLocalStorage();
+    const initial = getStoredLandingData();
+    setFormData(initial);
+
+    idbGet<LandingContentData>("ecotox_landing_content_v2")
+      .then((idbData) => {
+        if (idbData) {
+          setFormData(sanitizeLandingData(deepMerge(DEFAULT_LANDING_DATA, idbData)));
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  const handleImageUpload = (file: File, callback: (url: string) => void) => {
+  const handleImageUpload = async (file: File, callback: (url: string) => void) => {
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      alert("Please select an image file under 8MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      alert("Please select an image file under 15MB.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        callback(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await safeCompressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.84,
+      });
+      callback(compressed);
+    } catch (err) {
+      console.error("Failed to compress image:", err);
+      alert("Failed to process uploaded image.");
+    }
   };
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const success = saveLandingData(formData);
-    if (success) {
-      setSavedStatus("Homepage content successfully saved and synchronized!");
-      setTimeout(() => setSavedStatus(null), 4000);
+    try {
+      const success = saveLandingData(formData);
+      if (success) {
+        setSavedStatus("Homepage content successfully saved and synchronized!");
+        setTimeout(() => setSavedStatus(null), 4000);
+      } else {
+        alert("Could not save homepage content due to browser storage limitations. Please ensure images are appropriately sized.");
+      }
+    } catch (err) {
+      console.error("Error saving landing data:", err);
+      alert("An unexpected error occurred while saving.");
     }
   };
 
@@ -1296,19 +1321,15 @@ export default function AdminLandingManagerPage() {
                     return (
                       <div
                         key={partner.id || index}
-                        className={`p-4 rounded-2xl border ${
+                        className={`p-3.5 rounded-2xl border ${
                           isLight ? "bg-white border-slate-200" : "bg-[#090D16] border-slate-800"
-                        } flex flex-col gap-3 relative transition-all group`}
+                        } flex flex-col gap-2 relative transition-all group hover:border-emerald-500/50`}
                       >
-                        {/* Name & Delete Header */}
-                        <div className="flex items-center justify-between gap-2">
-                          <input
-                            type="text"
-                            value={partner.name}
-                            onChange={(e) => updatePartnerField("name", e.target.value)}
-                            placeholder="Organization Name"
-                            className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-none ${inputBg}`}
-                          />
+                        {/* Top Action Bar with Delete */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Logo {index + 1}
+                          </span>
                           <button
                             type="button"
                             onClick={removePartner}
@@ -1319,8 +1340,8 @@ export default function AdminLandingManagerPage() {
                           </button>
                         </div>
 
-                        {/* Visual Upload / Preview Box */}
-                        <label className={`w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-3 relative cursor-pointer transition-all ${
+                        {/* Visual Upload / Preview Box (Only Logo) */}
+                        <label className={`w-full h-36 rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-3 relative cursor-pointer transition-all ${
                           partner.logoUrl
                             ? isLight ? "bg-slate-50 border-emerald-500/40" : "bg-slate-900/60 border-emerald-500/40"
                             : isLight ? "bg-slate-50 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/20" : "bg-slate-900/40 border-slate-700 hover:border-emerald-400 hover:bg-emerald-950/20"
@@ -1329,22 +1350,22 @@ export default function AdminLandingManagerPage() {
                             <div className="relative w-full h-full flex items-center justify-center">
                               <img
                                 src={partner.logoUrl}
-                                alt={partner.name || "Organization Logo"}
+                                alt="Organization Logo"
                                 className="max-h-full max-w-full object-contain"
                               />
                               <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity rounded-lg">
-                                <span className="px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-bold shadow-xs">
+                                <span className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-md">
                                   Change Logo
                                 </span>
                               </div>
                             </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center text-center gap-1.5 pointer-events-none">
-                              <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                              <div className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
                                 <Upload className="w-4 h-4" />
                               </div>
                               <span className="text-xs font-semibold text-emerald-500">Upload Logo</span>
-                              <span className="text-[10px] text-slate-400">Click to browse image</span>
+                              <span className="text-[10px] text-slate-400">Click to browse image (PNG/SVG)</span>
                             </div>
                           )}
 
@@ -1363,19 +1384,28 @@ export default function AdminLandingManagerPage() {
                           />
                         </label>
 
-                        {/* Optional Clear / URL helper */}
-                        {partner.logoUrl && (
-                          <div className="flex items-center justify-between pt-0.5">
-                            <span className="text-[10px] text-emerald-400 font-medium">✓ Logo Added</span>
-                            <button
-                              type="button"
-                              onClick={() => updatePartnerField("logoUrl", "")}
-                              className="text-[10px] text-rose-400 hover:text-rose-500 hover:underline cursor-pointer"
-                            >
-                              Remove image
-                            </button>
-                          </div>
-                        )}
+                        {/* Direct URL input & status */}
+                        <div className="space-y-1.5 pt-1">
+                          <input
+                            type="text"
+                            placeholder="Paste direct Logo URL..."
+                            value={partner.logoUrl || ""}
+                            onChange={(e) => updatePartnerField("logoUrl", e.target.value)}
+                            className={`w-full px-2.5 py-1.5 rounded-lg border text-[11px] font-mono outline-none ${inputBg}`}
+                          />
+                          {partner.logoUrl && (
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="text-emerald-400 font-medium">✓ Logo Ready</span>
+                              <button
+                                type="button"
+                                onClick={() => updatePartnerField("logoUrl", "")}
+                                className="text-rose-400 hover:text-rose-500 hover:underline cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1924,6 +1954,24 @@ export default function AdminLandingManagerPage() {
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none ${inputBg}`}
                   />
                 </div>
+
+                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                      Live News &amp; Dispatches Management
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Create, edit, or feature articles appearing in this carousel.
+                    </div>
+                  </div>
+                  <Link
+                    href="/admin/news"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs whitespace-nowrap cursor-pointer"
+                  >
+                    <span>Open News Studio</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
             )}
 
@@ -2178,26 +2226,7 @@ export default function AdminLandingManagerPage() {
                         </button>
                       </div>
 
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          if (!editingGalleryItem.title || !editingGalleryItem.image_url) {
-                            alert("Please provide both Title and Image URL.");
-                            return;
-                          }
-                          await saveGalleryItem({
-                            id: editingGalleryItem.id || undefined,
-                            title: editingGalleryItem.title,
-                            category: editingGalleryItem.category,
-                            location: editingGalleryItem.location,
-                            date_text: editingGalleryItem.date_text,
-                            description: editingGalleryItem.description,
-                            image_url: editingGalleryItem.image_url,
-                          });
-                          setGalleryModalOpen(false);
-                        }}
-                        className="space-y-4 text-xs"
-                      >
+                      <div className="space-y-4 text-xs">
                         <div>
                           <label className={`block font-semibold mb-1 ${subText}`}>Title / Caption *</label>
                           <input
@@ -2315,18 +2344,34 @@ export default function AdminLandingManagerPage() {
                           <button
                             type="button"
                             onClick={() => setGalleryModalOpen(false)}
-                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold"
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold cursor-pointer"
                           >
                             Cancel
                           </button>
                           <button
-                            type="submit"
+                            type="button"
+                            onClick={async () => {
+                              if (!editingGalleryItem.title || !editingGalleryItem.image_url) {
+                                alert("Please provide both Title and Image URL.");
+                                return;
+                              }
+                              await saveGalleryItem({
+                                id: editingGalleryItem.id || undefined,
+                                title: editingGalleryItem.title,
+                                category: editingGalleryItem.category,
+                                location: editingGalleryItem.location,
+                                date_text: editingGalleryItem.date_text,
+                                description: editingGalleryItem.description,
+                                image_url: editingGalleryItem.image_url,
+                              });
+                              setGalleryModalOpen(false);
+                            }}
                             className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-600/20 cursor-pointer"
                           >
                             Save Photo
                           </button>
                         </div>
-                      </form>
+                      </div>
                     </div>
                   </div>
                 )}

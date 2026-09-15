@@ -146,7 +146,7 @@ export function ContactPreview() {
                       if (!target.src.includes("jahangirnagar-campus.jpg")) {
                         target.src = "/images/jahangirnagar-campus.jpg";
                       } else {
-                        target.src = "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1600&q=80";
+                        target.src = "/images/jahangirnagar-campus-map.jpg";
                       }
                     }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.95]"

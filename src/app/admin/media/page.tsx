@@ -9,6 +9,7 @@ import {
   GalleryItem,
   getCategoryBadgeColor
 } from "@/lib/gallery-store";
+import { safeCompressImage } from "@/lib/image-compression";
 import {
   Image as ImageIcon,
   Plus,
@@ -89,28 +90,29 @@ export default function AdminMediaPage() {
     setShowModal(true);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert("Please select an image smaller than 8MB");
+    if (file.size > 15 * 1024 * 1024) {
+      alert("Please select an image smaller than 15MB");
       return;
     }
 
     setUploadingImage(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setFormState((prev) => ({ ...prev, image_url: reader.result as string }));
-        setUploadingImage(false);
-      }
-    };
-    reader.onerror = () => {
-      alert("Failed to read image file");
+    try {
+      const compressed = await safeCompressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.84,
+      });
+      setFormState((prev) => ({ ...prev, image_url: compressed }));
+    } catch (err) {
+      console.error("Failed to compress image:", err);
+      alert("Failed to process image file");
+    } finally {
       setUploadingImage(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {

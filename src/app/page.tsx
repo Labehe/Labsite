@@ -21,7 +21,6 @@ import {
   MOCK_PROJECTS,
   MOCK_PUBLICATIONS,
   MOCK_PEOPLE,
-  MOCK_NEWS,
 } from "@/data/mock-homepage";
 
 export default function HomePage() {
@@ -55,8 +54,8 @@ export default function HomePage() {
         {/* 8. People Section ("The People Behind The Science") */}
         <FeaturedPeople people={MOCK_PEOPLE} />
 
-        {/* 9. Latest News & Breakthroughs */}
-        <LatestNews news={MOCK_NEWS} />
+        {/* 9. Latest News & Breakthroughs (Synced with News Store) */}
+        <LatestNews />
 
         {/* 10. Opportunities CTA */}
         <OpportunitiesCTA />

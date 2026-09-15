@@ -37,6 +37,7 @@ import {
   Tag
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { safeCompressImage } from "@/lib/image-compression";
 import { NewsArticle, NewsCategory, NewsFormData } from "@/lib/news/types";
 import { getPublishedNews, getNewsStats } from "@/lib/news/queries";
 import {
@@ -240,16 +241,18 @@ export default function AdminNewsPage() {
         console.warn("Storage upload fallback:", e);
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setFormData((prev) => ({ ...prev, cover_image_url: result }));
-        setStatusNotification({ type: "success", message: "Cover photo staged for dispatch!" });
-        setUploadingCover(false);
-      };
-      reader.readAsDataURL(file);
+      // High quality client-side compression fallback
+      const compressed = await safeCompressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.84,
+      });
+
+      setFormData((prev) => ({ ...prev, cover_image_url: compressed }));
+      setStatusNotification({ type: "success", message: "Cover photo optimized and staged!" });
     } catch (err: any) {
       setStatusNotification({ type: "error", message: "Failed to upload image: " + (err.message || String(err)) });
+    } finally {
       setUploadingCover(false);
     }
   };

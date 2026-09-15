@@ -89,8 +89,12 @@ export function PartnersMarquee() {
 
   // Combine dynamic partners from landingData (or fallback to seed)
   const activePartners = React.useMemo(() => {
-    if (landingData.partnersSection?.partners && landingData.partnersSection.partners.length > 0) {
-      return landingData.partnersSection.partners;
+    const custom = landingData.partnersSection?.partners;
+    if (custom && custom.length > 0) {
+      // Prioritize items that have a logo uploaded
+      const withLogos = custom.filter((p) => Boolean(p.logoUrl && p.logoUrl.trim()));
+      if (withLogos.length > 0) return withLogos;
+      return custom;
     }
     return PARTNERS;
   }, [landingData.partnersSection?.partners]);
@@ -101,7 +105,7 @@ export function PartnersMarquee() {
   }, [activePartners]);
 
   return (
-    <section className="py-14 sm:py-16 bg-[#F4F8F5] dark:bg-[#0B1120] border-y border-slate-200/80 dark:border-slate-800 relative overflow-hidden transition-colors duration-300 w-full">
+    <section className="py-12 sm:py-14 bg-[#F4F8F5] dark:bg-[#0B1120] border-y border-slate-200/80 dark:border-slate-800 relative overflow-hidden transition-colors duration-300 w-full">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
 
@@ -127,7 +131,7 @@ export function PartnersMarquee() {
         <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-[#F4F8F5] dark:from-[#0B1120] to-transparent z-20" />
         <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-[#F4F8F5] dark:from-[#0B1120] to-transparent z-20" />
 
-        {/* Continuous Marquee Track */}
+        {/* Continuous Marquee Track (Only Logos) */}
         <div
           className="animate-marquee-scroll flex items-center gap-4 sm:gap-6 group-hover:[animation-play-state:paused]"
           style={{ animationPlayState: isPaused ? "paused" : "running" }}
@@ -138,17 +142,17 @@ export function PartnersMarquee() {
                 key={`${partner.id}-${index}`}
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
-                title={partner.name}
-                className="flex-shrink-0 h-16 sm:h-20 min-w-[140px] sm:min-w-[170px] max-w-[220px] px-5 sm:px-7 py-3 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg hover:border-emerald-500 dark:hover:border-emerald-500 flex items-center justify-center transition-all duration-300 group/partner cursor-default"
+                title={partner.name || "Collaborating Organization"}
+                className="flex-shrink-0 h-16 sm:h-20 min-w-[130px] sm:min-w-[160px] max-w-[220px] px-4 sm:px-6 py-2.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg hover:border-emerald-500 dark:hover:border-emerald-500 flex items-center justify-center transition-all duration-300 group/partner cursor-default"
               >
                 {partner.logoUrl ? (
                   <img
                     src={partner.logoUrl}
-                    alt={partner.name}
-                    className="h-9 sm:h-12 w-auto max-w-full object-contain filter contrast-[1.05] group-hover/partner:scale-105 transition-all duration-300"
+                    alt={partner.name || "Partner Logo"}
+                    className="h-10 sm:h-12 w-auto max-w-full object-contain filter contrast-[1.05] group-hover/partner:scale-105 transition-all duration-300"
                   />
                 ) : (
-                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 group-hover/partner:text-emerald-500 transition-colors whitespace-nowrap">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover/partner:text-emerald-500 transition-colors whitespace-nowrap">
                     <Building2 className="w-5 h-5 text-emerald-500 shrink-0" />
                     <span>{partner.name}</span>
                   </div>

@@ -7,8 +7,12 @@ import {
   saveLandingData,
   resetLandingData,
   DEFAULT_LANDING_DATA,
-  LandingContentData
+  LandingContentData,
+  deepMerge,
+  sanitizeLandingData
 } from "@/lib/landing-store";
+import { idbGet } from "@/lib/storage/idb-storage";
+import { safeCompressImage } from "@/lib/image-compression";
 import {
   ShieldCheck,
   Save,
@@ -39,24 +43,45 @@ export default function AdminAboutPage() {
   const whoWeAreFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setData(getStoredLandingData());
+    const initial = getStoredLandingData();
+    setData(initial);
+
+    idbGet<LandingContentData>("ecotox_landing_content_v2")
+      .then((idbData) => {
+        if (idbData) {
+          setData(sanitizeLandingData(deepMerge(DEFAULT_LANDING_DATA, idbData)));
+        }
+      })
+      .catch(() => {});
+
+    const handleUpdate = () => {
+      const updated = getStoredLandingData();
+      setData(updated);
+    };
+
+    window.addEventListener("landing-content-updated", handleUpdate);
+    return () => window.removeEventListener("landing-content-updated", handleUpdate);
   }, []);
 
   const about = data.aboutPage || DEFAULT_LANDING_DATA.aboutPage!;
 
-  const handleFileUpload = (file: File, callback: (dataUrl: string) => void) => {
+  const handleFileUpload = async (file: File, callback: (dataUrl: string) => void) => {
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      alert("Please select an image file under 10MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      alert("Please select an image file under 15MB.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        callback(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await safeCompressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.84,
+      });
+      callback(compressed);
+    } catch (err) {
+      console.error("Failed to compress image:", err);
+      alert("Failed to process image file.");
+    }
   };
 
   const handleSave = (e?: React.FormEvent) => {
@@ -76,42 +101,54 @@ export default function AdminAboutPage() {
   };
 
   const updateAboutHero = (fields: Partial<typeof about.hero>) => {
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        hero: {
-          ...(prev.aboutPage?.hero || DEFAULT_LANDING_DATA.aboutPage!.hero),
-          ...fields,
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          hero: {
+            ...(prev.aboutPage?.hero || DEFAULT_LANDING_DATA.aboutPage!.hero),
+            ...fields,
+          },
         },
-      },
-    }));
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const updateWhoWeAre = (fields: Partial<typeof about.whoWeAre>) => {
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        whoWeAre: {
-          ...(prev.aboutPage?.whoWeAre || DEFAULT_LANDING_DATA.aboutPage!.whoWeAre),
-          ...fields,
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          whoWeAre: {
+            ...(prev.aboutPage?.whoWeAre || DEFAULT_LANDING_DATA.aboutPage!.whoWeAre),
+            ...fields,
+          },
         },
-      },
-    }));
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const updateCTA = (fields: Partial<typeof about.cta>) => {
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        cta: {
-          ...(prev.aboutPage?.cta || DEFAULT_LANDING_DATA.aboutPage!.cta),
-          ...fields,
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          cta: {
+            ...(prev.aboutPage?.cta || DEFAULT_LANDING_DATA.aboutPage!.cta),
+            ...fields,
+          },
         },
-      },
-    }));
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const handleAddMilestone = () => {
@@ -121,72 +158,96 @@ export default function AdminAboutPage() {
       badge: "Upcoming",
       desc: "Expanding experimental capabilities into advanced ecotoxicological modeling.",
     };
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        milestones: [...(prev.aboutPage?.milestones || DEFAULT_LANDING_DATA.aboutPage!.milestones), newM],
-      },
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          milestones: [...(prev.aboutPage?.milestones || DEFAULT_LANDING_DATA.aboutPage!.milestones), newM],
+        },
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const handleRemoveMilestone = (index: number) => {
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        milestones: (prev.aboutPage?.milestones || DEFAULT_LANDING_DATA.aboutPage!.milestones).filter((_, i) => i !== index),
-      },
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          milestones: (prev.aboutPage?.milestones || DEFAULT_LANDING_DATA.aboutPage!.milestones).filter((_, i) => i !== index),
+        },
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const handleUpdateMilestone = (index: number, fields: any) => {
-    const list = [...(data.aboutPage?.milestones || DEFAULT_LANDING_DATA.aboutPage!.milestones)];
-    list[index] = { ...list[index], ...fields };
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        milestones: list,
-      },
-    }));
+    setData((prev) => {
+      const list = [...(prev.aboutPage?.milestones || DEFAULT_LANDING_DATA.aboutPage!.milestones)];
+      list[index] = { ...list[index], ...fields };
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          milestones: list,
+        },
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const handleAddGalleryImage = () => {
     const newImg = {
       title: "New Laboratory Facility",
-      category: "Analytical Facility",
-      image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+      category: "Laboratory Analysis",
+      image: "/images/gallery/analytical-instrumentation.jpg",
     };
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        galleryImages: [...(prev.aboutPage?.galleryImages || DEFAULT_LANDING_DATA.aboutPage!.galleryImages), newImg],
-      },
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          galleryImages: [...(prev.aboutPage?.galleryImages || DEFAULT_LANDING_DATA.aboutPage!.galleryImages), newImg],
+        },
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const handleRemoveGalleryImage = (index: number) => {
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        galleryImages: (prev.aboutPage?.galleryImages || DEFAULT_LANDING_DATA.aboutPage!.galleryImages).filter((_, i) => i !== index),
-      },
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          galleryImages: (prev.aboutPage?.galleryImages || DEFAULT_LANDING_DATA.aboutPage!.galleryImages).filter((_, i) => i !== index),
+        },
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   const handleUpdateGalleryImage = (index: number, fields: any) => {
-    const list = [...(data.aboutPage?.galleryImages || DEFAULT_LANDING_DATA.aboutPage!.galleryImages)];
-    list[index] = { ...list[index], ...fields };
-    setData((prev) => ({
-      ...prev,
-      aboutPage: {
-        ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
-        galleryImages: list,
-      },
-    }));
+    setData((prev) => {
+      const list = [...(prev.aboutPage?.galleryImages || DEFAULT_LANDING_DATA.aboutPage!.galleryImages)];
+      list[index] = { ...list[index], ...fields };
+      const updated = {
+        ...prev,
+        aboutPage: {
+          ...(prev.aboutPage || DEFAULT_LANDING_DATA.aboutPage!),
+          galleryImages: list,
+        },
+      };
+      saveLandingData(updated);
+      return updated;
+    });
   };
 
   return (

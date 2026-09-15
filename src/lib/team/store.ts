@@ -1,6 +1,7 @@
 import { TeamMember, TeamCategory } from "./types";
 import { INITIAL_TEAM_MEMBERS } from "./seed-data";
 import { createClient } from "@/lib/supabase/client";
+import { idbGet, idbSet, idbDelete, safeLocalStorageSet, safeLocalStorageGet } from "@/lib/storage/idb-storage";
 
 const LOCAL_STORAGE_KEY = "ecotox_lab_team_members_v1";
 
@@ -14,7 +15,7 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
       .order("order_index", { ascending: true });
 
     if (!error && data && data.length > 0) {
-      return data.map((row: any) => ({
+      const mapped: TeamMember[] = data.map((row: any) => ({
         id: row.id,
         name: row.name,
         slug: row.slug || row.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
@@ -52,29 +53,40 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
         orderIndex: row.order_index || 0,
         isActive: row.is_active ?? true,
       }));
+
+      // Cache locally
+      await idbSet(LOCAL_STORAGE_KEY, mapped);
+      safeLocalStorageSet(LOCAL_STORAGE_KEY, mapped);
+      return mapped;
     }
   } catch (err) {
     // Supabase query failed, fallback
   }
 
-  // 2. Check localStorage in browser
+  // 2. Check IndexedDB in browser (unlimited quota)
   if (typeof window !== "undefined") {
-    const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error("Failed to parse cached team members", e);
+    try {
+      const idbData = await idbGet<TeamMember[]>(LOCAL_STORAGE_KEY);
+      if (Array.isArray(idbData) && idbData.length > 0) {
+        return idbData;
       }
+    } catch (e) {
+      console.warn("IndexedDB read error:", e);
+    }
+
+    // 3. Check localStorage in browser
+    const cached = safeLocalStorageGet<TeamMember[]>(LOCAL_STORAGE_KEY);
+    if (Array.isArray(cached) && cached.length > 0) {
+      // Migrate to IndexedDB
+      await idbSet(LOCAL_STORAGE_KEY, cached);
+      return cached;
     }
   }
 
-  // 3. Fallback to rich seed data
+  // 4. Fallback to rich seed data
   if (typeof window !== "undefined") {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_TEAM_MEMBERS));
+    await idbSet(LOCAL_STORAGE_KEY, INITIAL_TEAM_MEMBERS);
+    safeLocalStorageSet(LOCAL_STORAGE_KEY, INITIAL_TEAM_MEMBERS);
   }
   return INITIAL_TEAM_MEMBERS;
 }
@@ -140,12 +152,14 @@ export async function saveTeamMember(member: Partial<TeamMember>): Promise<TeamM
     updatedList = current.map((m) => (m.id === completeMember.id ? completeMember : m));
   }
 
-  // Update localStorage
+  // 1. Always save directly into IndexedDB (guaranteed success)
   if (typeof window !== "undefined") {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+    await idbSet(LOCAL_STORAGE_KEY, updatedList);
+    // 2. Mirror into localStorage safely with quota protection
+    safeLocalStorageSet(LOCAL_STORAGE_KEY, updatedList);
   }
 
-  // Try saving to Supabase if table exists
+  // 3. Try saving to Supabase if table exists
   try {
     const supabase = createClient();
     const payload = {
@@ -183,7 +197,8 @@ export async function deleteTeamMember(id: string): Promise<boolean> {
   const updatedList = current.filter((m) => m.id !== id);
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+    await idbSet(LOCAL_STORAGE_KEY, updatedList);
+    safeLocalStorageSet(LOCAL_STORAGE_KEY, updatedList);
   }
 
   try {
@@ -226,4 +241,3 @@ export async function getRelatedTeamMembers(
     .filter((m) => m.id !== currentId && (m.category === category || category === "pi"))
     .slice(0, limit);
 }
-

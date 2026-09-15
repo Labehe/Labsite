@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { idbGet, idbSet, idbDelete, safeLocalStorageSet, safeLocalStorageGet } from "@/lib/storage/idb-storage";
 
 export interface LandingContentData {
   hero: {
@@ -395,7 +396,7 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
     publicationsCount: "74+",
     citationsCount: "2,840+",
     hIndex: "26",
-    imageSrc: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80",
+    imageSrc: "/images/hero-scientist.jpg",
     scholarUrl: "https://scholar.google.com/citations?user=example-rahman",
     researchgateUrl: "https://www.researchgate.net/profile/Mostafizur-Rahman",
   },
@@ -444,7 +445,7 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
       badge: "ABOUT THE LAB",
       headline: "Science with purpose.",
       supportingText: "Department of Environmental Sciences • Jahangirnagar University, Savar, Dhaka",
-      backgroundImageUrl: "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=2200&q=90",
+      backgroundImageUrl: "/images/hero-clean-bg.jpg",
       metrics: [
         { label: "15+ Years Active Research" },
         { label: "140+ Peer-Reviewed Papers" },
@@ -461,7 +462,7 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
       rigorText: "ISO/EPA benchmarked analytical methods with certified standards and ultra-trace limits.",
       policyTitle: "Policy Translation",
       policyText: "Translating lab discoveries into environmental guidelines and public health protection.",
-      imageSrc: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80",
+      imageSrc: "/images/slide-2-lab.jpg",
       imageCaptionBadge: "DEPARTMENT OF ENVIRONMENTAL SCIENCES",
       imageCaptionTitle: "Faculty of Mathematical & Physical Sciences",
       imageCaptionSubtitle: "Jahangirnagar University Campus, Savar, Dhaka-1342, Bangladesh.",
@@ -500,34 +501,34 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
     ],
     galleryImages: [
       {
-        title: "Ultra-Trace Spectrometry Cleanroom",
-        category: "Analytical Facility",
-        image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+        title: "Ultra-Trace Spectrometry & Chromatography",
+        category: "Laboratory Analysis",
+        image: "/images/gallery/analytical-instrumentation.jpg",
       },
       {
         title: "Microscopic Imaging & Micro-FTIR",
-        category: "Polymer Analysis",
-        image: "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=800&q=80",
+        category: "Microscopy & Imaging",
+        image: "/images/gallery/microscopy-imaging.jpg",
       },
       {
-        title: "Cellular Bioassay & Toxicogenomics",
+        title: "Molecular Bioassay & Toxicogenomics",
         category: "Biological Exposure",
-        image: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80",
+        image: "/images/slide-3-analysis.jpg",
       },
       {
-        title: "Delta River Sediment Coring",
+        title: "Delta Aquatic Sampling & Field Coring",
         category: "Field Expedition",
-        image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80",
+        image: "/images/gallery/field-sampling.jpg",
       },
       {
         title: "Environmental GIS & Hydrodynamics",
-        category: "Geocomputation",
-        image: "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80",
+        category: "Campus & Field Mapping",
+        image: "/images/jahangirnagar-campus-map.jpg",
       },
       {
-        title: "Circular Bioremediation Cleanroom",
+        title: "Ecosystem Health & Bioremediation",
         category: "Resource Recovery",
-        image: "https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=800&q=80",
+        image: "/images/slide-4-impact.jpg",
       },
     ],
     cta: {
@@ -547,7 +548,7 @@ export const DEFAULT_LANDING_DATA: LandingContentData = {
   },
 };
 
-function deepMerge<T extends Record<string, any>>(target: T, source: any): T {
+export function deepMerge<T extends Record<string, any>>(target: T, source: any): T {
   if (!source || typeof source !== "object") return target;
   const result: any = Array.isArray(target) ? [...target] : { ...target };
 
@@ -574,15 +575,73 @@ function deepMerge<T extends Record<string, any>>(target: T, source: any): T {
   return result;
 }
 
+export function sanitizeLandingData(data: LandingContentData): LandingContentData {
+  const sanitized = { ...data };
+
+  // Sanitize legacy unsplash mock images from aboutPage
+  if (sanitized.aboutPage) {
+    const about = { ...sanitized.aboutPage };
+
+    if (!about.hero?.backgroundImageUrl || about.hero.backgroundImageUrl.includes("unsplash.com")) {
+      about.hero = { ...about.hero, backgroundImageUrl: "/images/hero-clean-bg.jpg" };
+    }
+
+    if (!about.whoWeAre?.imageSrc || about.whoWeAre.imageSrc.includes("unsplash.com")) {
+      about.whoWeAre = { ...about.whoWeAre, imageSrc: "/images/slide-2-lab.jpg" };
+    }
+
+    if (about.galleryImages && Array.isArray(about.galleryImages)) {
+      const defaultGalleryMap: Record<number, string> = {
+        0: "/images/gallery/analytical-instrumentation.jpg",
+        1: "/images/gallery/microscopy-imaging.jpg",
+        2: "/images/slide-3-analysis.jpg",
+        3: "/images/gallery/field-sampling.jpg",
+        4: "/images/jahangirnagar-campus-map.jpg",
+        5: "/images/slide-4-impact.jpg",
+      };
+
+      about.galleryImages = about.galleryImages.map((item, idx) => {
+        if (!item.image || item.image.includes("unsplash.com")) {
+          return {
+            ...item,
+            image: defaultGalleryMap[idx] || "/images/gallery/analytical-instrumentation.jpg",
+          };
+        }
+        return item;
+      });
+    }
+
+    sanitized.aboutPage = about;
+  }
+
+  // Sanitize PI section image if pointing to legacy unsplash URL
+  if (sanitized.piSection && (!sanitized.piSection.imageSrc || sanitized.piSection.imageSrc.includes("unsplash.com"))) {
+    sanitized.piSection = {
+      ...sanitized.piSection,
+      imageSrc: "/images/hero-scientist.jpg",
+    };
+  }
+
+  // Sanitize contact aerial image if pointing to external unsplash placeholder
+  if (sanitized.contactSection && (!sanitized.contactSection.aerialImageSrc || sanitized.contactSection.aerialImageSrc.includes("unsplash.com"))) {
+    sanitized.contactSection = {
+      ...sanitized.contactSection,
+      aerialImageSrc: "/images/jahangirnagar-campus.jpg",
+    };
+  }
+
+  return sanitized;
+}
+
 const STORAGE_KEY = "ecotox_landing_content_v2";
 
 export function getStoredLandingData(): LandingContentData {
   if (typeof window === "undefined") return DEFAULT_LANDING_DATA;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeLocalStorageGet<LandingContentData>(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      return deepMerge(DEFAULT_LANDING_DATA, parsed);
+      const merged = deepMerge(DEFAULT_LANDING_DATA, raw);
+      return sanitizeLandingData(merged);
     }
   } catch (e) {
     console.warn("Could not read landing content:", e);
@@ -593,10 +652,15 @@ export function getStoredLandingData(): LandingContentData {
 export function saveLandingData(data: LandingContentData): boolean {
   if (typeof window === "undefined") return false;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // 1. Save directly into IndexedDB (guaranteed persistent storage)
+    idbSet(STORAGE_KEY, data).catch((err) => console.warn("IDB landing save error:", err));
+
+    // 2. Mirror into localStorage safely without throwing QuotaExceededError
+    safeLocalStorageSet(STORAGE_KEY, data);
+
     window.dispatchEvent(new Event("landing-content-updated"));
     return true;
-  } catch (e) {
+  } catch (e: any) {
     console.error("Failed to save landing content:", e);
     return false;
   }
@@ -604,7 +668,10 @@ export function saveLandingData(data: LandingContentData): boolean {
 
 export function resetLandingData(): LandingContentData {
   if (typeof window !== "undefined") {
-    localStorage.removeItem(STORAGE_KEY);
+    idbDelete(STORAGE_KEY).catch(() => {});
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
     window.dispatchEvent(new Event("landing-content-updated"));
   }
   return DEFAULT_LANDING_DATA;
@@ -614,10 +681,24 @@ export function useLandingData() {
   const [data, setData] = useState<LandingContentData>(DEFAULT_LANDING_DATA);
 
   useEffect(() => {
-    setData(getStoredLandingData());
+    // 1. Synchronously load from localStorage cache
+    const initial = getStoredLandingData();
+    setData(initial);
+
+    // 2. Asynchronously check IndexedDB in case it has richer data
+    idbGet<LandingContentData>(STORAGE_KEY).then((idbData) => {
+      if (idbData) {
+        setData(sanitizeLandingData(deepMerge(DEFAULT_LANDING_DATA, idbData)));
+      }
+    }).catch(() => {});
 
     const handleUpdate = () => {
       setData(getStoredLandingData());
+      idbGet<LandingContentData>(STORAGE_KEY).then((idbData) => {
+        if (idbData) {
+          setData(sanitizeLandingData(deepMerge(DEFAULT_LANDING_DATA, idbData)));
+        }
+      }).catch(() => {});
     };
 
     window.addEventListener("landing-content-updated", handleUpdate);

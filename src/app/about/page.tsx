@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/public/navbar";
 import { Footer } from "@/components/public/footer";
 import { useLandingData } from "@/lib/landing-store";
+import { useGalleryItems } from "@/lib/gallery-store";
 import {
   FlaskConical,
   Compass,
@@ -31,6 +32,7 @@ import {
 export default function AboutPage() {
   const landingData = useLandingData();
   const about = landingData.aboutPage;
+  const { items: galleryItems } = useGalleryItems();
 
   const timelineYears = about?.milestones && about.milestones.length > 0 ? about.milestones : [
     {
@@ -65,38 +67,62 @@ export default function AboutPage() {
     },
   ];
 
-  const labImages = about?.galleryImages && about.galleryImages.length > 0 ? about.galleryImages : [
+  const defaultLabImages = [
     {
-      title: "Ultra-Trace Spectrometry Cleanroom",
-      category: "Analytical Facility",
-      image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+      title: "Ultra-Trace Spectrometry & Chromatography",
+      category: "Laboratory Analysis",
+      image: "/images/gallery/analytical-instrumentation.jpg",
     },
     {
       title: "Microscopic Imaging & Micro-FTIR",
-      category: "Polymer Analysis",
-      image: "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=800&q=80",
+      category: "Microscopy & Imaging",
+      image: "/images/gallery/microscopy-imaging.jpg",
     },
     {
-      title: "Cellular Bioassay & Toxicogenomics",
+      title: "Molecular Bioassay & Toxicogenomics",
       category: "Biological Exposure",
-      image: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80",
+      image: "/images/slide-3-analysis.jpg",
     },
     {
-      title: "Delta River Sediment Coring",
+      title: "Delta Aquatic Sampling & Field Coring",
       category: "Field Expedition",
-      image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80",
+      image: "/images/gallery/field-sampling.jpg",
     },
     {
       title: "Environmental GIS & Hydrodynamics",
-      category: "Geocomputation",
-      image: "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80",
+      category: "Campus & Field Mapping",
+      image: "/images/jahangirnagar-campus-map.jpg",
     },
     {
-      title: "Circular Bioremediation Cleanroom",
+      title: "Ecosystem Health & Bioremediation",
       category: "Resource Recovery",
-      image: "https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=800&q=80",
+      image: "/images/slide-4-impact.jpg",
     },
   ];
+
+  // Prioritize user-configured gallery images (if not old unsplash stock), or dynamic live gallery items from gallery store, or authentic default lab images
+  const labImages =
+    about?.galleryImages &&
+    about.galleryImages.length > 0 &&
+    !about.galleryImages.some((img) => img.image.includes("images.unsplash.com"))
+      ? about.galleryImages
+      : galleryItems && galleryItems.length > 0
+      ? galleryItems.map((item) => ({
+          title: item.title,
+          category: item.category,
+          image: item.image_url,
+        }))
+      : defaultLabImages;
+
+  const heroBackgroundUrl =
+    about?.hero?.backgroundImageUrl && !about.hero.backgroundImageUrl.includes("images.unsplash.com")
+      ? about.hero.backgroundImageUrl
+      : "/images/hero-clean-bg.jpg";
+
+  const whoWeAreImageSrc =
+    about?.whoWeAre?.imageSrc && !about.whoWeAre.imageSrc.includes("images.unsplash.com")
+      ? about.whoWeAre.imageSrc
+      : "/images/slide-2-lab.jpg";
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-[family-name:var(--font-inter)] selection:bg-[#10B981] selection:text-black">
@@ -111,7 +137,7 @@ export default function AboutPage() {
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat filter brightness-[0.45] scale-105"
             style={{
-              backgroundImage: `url('${about?.hero.backgroundImageUrl || "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=2200&q=90"}')`,
+              backgroundImage: `url('${heroBackgroundUrl}')`,
             }}
           />
 
@@ -228,7 +254,7 @@ export default function AboutPage() {
               <div className="lg:col-span-6 relative">
                 <div className="relative aspect-[16/11] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-slate-900 group">
                   <img
-                    src={about?.whoWeAre.imageSrc || "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80"}
+                    src={whoWeAreImageSrc}
                     alt={about?.whoWeAre.imageCaptionTitle || "Laboratory Researchers Conducting Environmental Analysis"}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.95]"
                   />

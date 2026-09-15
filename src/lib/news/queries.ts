@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/client";
 import { NewsArticle, NewsStats, NewsFilterParams } from "./types";
 import { SEED_NEWS_ARTICLES } from "./seed-data";
 import { SEED_RESEARCH_AREAS, SEED_PROJECTS } from "../projects/seed-data";
+import { idbGet, idbSet, safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage/idb-storage";
 
 const LOCAL_STORAGE_KEY = "lab_news_articles_override_v2";
 
@@ -11,12 +12,11 @@ const LOCAL_STORAGE_KEY = "lab_news_articles_override_v2";
 export function getLocalNews(): NewsArticle[] {
   if (typeof window === "undefined") return SEED_NEWS_ARTICLES;
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(SEED_NEWS_ARTICLES));
-      return SEED_NEWS_ARTICLES;
+    const cached = safeLocalStorageGet<NewsArticle[]>(LOCAL_STORAGE_KEY);
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      return cached;
     }
-    return JSON.parse(raw);
+    return SEED_NEWS_ARTICLES;
   } catch {
     return SEED_NEWS_ARTICLES;
   }
@@ -25,7 +25,8 @@ export function getLocalNews(): NewsArticle[] {
 export function saveLocalNews(items: NewsArticle[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items));
+    idbSet(LOCAL_STORAGE_KEY, items);
+    safeLocalStorageSet(LOCAL_STORAGE_KEY, items);
     window.dispatchEvent(new Event("lab_news_updated"));
   } catch (err) {
     console.error("Failed to save local news articles:", err);
@@ -39,7 +40,28 @@ export async function getPublishedNews(
   filters: NewsFilterParams = {},
   includeDrafts = false
 ): Promise<NewsArticle[]> {
-  const localList = getLocalNews();
+  let localList: NewsArticle[] = SEED_NEWS_ARTICLES;
+
+  if (typeof window !== "undefined") {
+    try {
+      const idbData = await idbGet<NewsArticle[]>(LOCAL_STORAGE_KEY);
+      if (Array.isArray(idbData) && idbData.length > 0) {
+        localList = idbData;
+      } else {
+        const lsData = safeLocalStorageGet<NewsArticle[]>(LOCAL_STORAGE_KEY);
+        if (Array.isArray(lsData) && lsData.length > 0) {
+          localList = lsData;
+          idbSet(LOCAL_STORAGE_KEY, lsData);
+        } else {
+          localList = SEED_NEWS_ARTICLES;
+          idbSet(LOCAL_STORAGE_KEY, SEED_NEWS_ARTICLES);
+          safeLocalStorageSet(LOCAL_STORAGE_KEY, SEED_NEWS_ARTICLES);
+        }
+      }
+    } catch {
+      localList = getLocalNews();
+    }
+  }
 
   try {
     const supabase = createClient();

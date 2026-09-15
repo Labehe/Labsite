@@ -33,11 +33,10 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
-          isSolidNav
+        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${isSolidNav
             ? "bg-white/95 dark:bg-black/20 dark:backdrop-blur-md border-b border-slate-200/90 dark:border-white/10 shadow-xs dark:shadow-none py-3"
             : "bg-gradient-to-b from-black/80 via-black/40 to-transparent dark:bg-transparent border-b border-white/10 backdrop-blur-[2px] dark:backdrop-blur-none py-4 sm:py-5"
-        }`}
+          }`}
       >
         <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12">
           <div className="flex items-center justify-between gap-4">
@@ -49,30 +48,27 @@ export function Navbar() {
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span
-                    className={`font-extrabold text-[13.5px] sm:text-[14.5px] leading-tight tracking-tight transition-colors ${
-                      isSolidNav
+                    className={`font-extrabold text-[13.5px] sm:text-[14.5px] leading-tight tracking-tight transition-colors ${isSolidNav
                         ? "text-slate-900 dark:text-white"
                         : "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]"
-                    }`}
+                      }`}
                   >
                     Laboratory of Environmental Health and Ecotoxicology
                   </span>
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wider hidden md:inline-block border transition-colors ${
-                      isSolidNav
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wider hidden md:inline-block border transition-colors ${isSolidNav
                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-300/80 dark:border-emerald-500/30"
                         : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                    }`}
+                      }`}
                   >
                     LabEHE
                   </span>
                 </div>
                 <span
-                  className={`text-[10px] sm:text-[10.5px] font-semibold mt-0.5 transition-colors ${
-                    isSolidNav
+                  className={`text-[10px] sm:text-[10.5px] font-semibold mt-0.5 transition-colors ${isSolidNav
                       ? "text-emerald-700 dark:text-emerald-300"
                       : "text-emerald-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
-                  }`}
+                    }`}
                 >
                   Department of Environmental Sciences • Jahangirnagar University
                 </span>
@@ -87,15 +83,14 @@ export function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-3 py-1.5 rounded-xl text-[13px] tracking-tight transition-all duration-200 ${
-                      isActive
+                    className={`px-3 py-1.5 rounded-xl text-[13px] tracking-tight transition-all duration-200 ${isActive
                         ? isSolidNav
                           ? "bg-emerald-100/90 text-[#14532D] dark:bg-emerald-500/20 dark:text-[#34D399] dark:border-emerald-500/30 font-bold shadow-xs border border-emerald-300/70"
                           : "bg-white/20 backdrop-blur-md text-[#34D399] border border-white/25 font-bold shadow-sm"
                         : isSolidNav
-                        ? "text-slate-700 dark:text-white/85 hover:text-[#14532D] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 font-semibold dark:font-medium"
-                        : "text-white/90 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-medium"
-                    }`}
+                          ? "text-slate-700 dark:text-white/85 hover:text-[#14532D] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 font-semibold dark:font-medium"
+                          : "text-white/90 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-medium"
+                      }`}
                   >
                     {item.label}
                   </Link>
@@ -109,11 +104,10 @@ export function Navbar() {
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search laboratory content"
                 title="Search website"
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 border ${
-                  isSolidNav
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 border ${isSolidNav
                     ? "border-slate-200 dark:border-transparent bg-slate-100 dark:bg-transparent text-slate-700 hover:text-[#14532D] dark:text-white/90 dark:hover:text-white hover:bg-emerald-50 dark:hover:bg-white/10"
                     : "border-transparent text-white/90 hover:text-white hover:bg-white/10"
-                }`}
+                  }`}
               >
                 <Search className="w-4 h-4" />
               </button>
@@ -128,11 +122,10 @@ export function Navbar() {
 
               <Link
                 href="/contact"
-                className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all active:scale-95 border ${
-                  isSolidNav
+                className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all active:scale-95 border ${isSolidNav
                     ? "bg-[#14532D] hover:bg-[#166534] text-white border-transparent shadow-md shadow-emerald-900/15 dark:bg-[#10B981] dark:hover:bg-[#34D399] dark:text-[#04150C] dark:font-bold dark:shadow-md dark:shadow-emerald-500/20"
                     : "bg-[#10B981] hover:bg-[#34D399] text-[#04150C] border-transparent font-bold shadow-md shadow-emerald-500/20"
-                }`}
+                  }`}
               >
                 <span>Connect With Us</span>
               </Link>
@@ -150,11 +143,10 @@ export function Navbar() {
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="Toggle Navigation Menu"
-                className={`p-2.5 rounded-xl border transition-colors ${
-                  isSolidNav
+                className={`p-2.5 rounded-xl border transition-colors ${isSolidNav
                     ? "border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-800/60 hover:bg-emerald-50"
                     : "border-white/25 bg-black/20 backdrop-blur-md text-white hover:bg-white/20 shadow-sm"
-                }`}
+                  }`}
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
