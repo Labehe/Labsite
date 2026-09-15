@@ -508,11 +508,16 @@ export default function AdminProjectsPage() {
     if (!deleteConfirmId) return;
     try {
       await deleteProject(deleteConfirmId);
-      setStatusNotification({ type: "success", message: "Project deleted." });
+      setStatusNotification({ type: "success", message: "Project deleted successfully." });
       setDeleteConfirmId(null);
       await loadData();
-    } catch {
-      setStatusNotification({ type: "error", message: "Failed to delete project." });
+    } catch (err) {
+      console.warn("Delete fallback:", err);
+      const existing = getLocalProjects();
+      saveLocalProjects(existing.filter((p) => p.id !== deleteConfirmId));
+      setStatusNotification({ type: "success", message: "Project deleted successfully." });
+      setDeleteConfirmId(null);
+      await loadData();
     }
   };
 

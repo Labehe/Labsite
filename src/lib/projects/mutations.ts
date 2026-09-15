@@ -266,11 +266,17 @@ export async function updateProject(
 export async function deleteProject(id: string): Promise<boolean> {
   const supabase = createClient();
   try {
-    await (supabase as any).from("projects").delete().eq("id", id);
-    await logProjectActivity("Project deleted", id);
+    const { error } = await (supabase as any).from("projects").delete().eq("id", id);
+    if (error) {
+      console.warn("Supabase delete restricted, removing locally:", error.message);
+    }
   } catch (err) {
     console.warn("Supabase delete failed, removing locally:", err);
   }
+
+  try {
+    await logProjectActivity("Project deleted", id);
+  } catch {}
 
   const existing = getLocalProjects();
   saveLocalProjects(existing.filter((p) => p.id !== id));

@@ -13,6 +13,12 @@ import {
   SEED_RESEARCHERS,
   SEED_COLLABORATORS,
 } from "./seed-data";
+import {
+  idbGet,
+  idbSet,
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+} from "@/lib/storage/idb-storage";
 
 function getQueryClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ztgwpyoztzpvqnwoixuy.supabase.co";
@@ -25,18 +31,17 @@ function getQueryClient() {
   });
 }
 
+const STORAGE_KEY = "ecotox_lab_projects_v2";
+
 // In-memory / client-side cache state to seamlessly reflect Admin mutations in development & Realtime
 let memoryProjects: ProjectWithRelations[] = [...SEED_PROJECTS];
 
 export function getLocalProjects(): ProjectWithRelations[] {
   if (typeof window !== "undefined") {
     try {
-      const stored = localStorage.getItem("lab_projects_store");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryProjects = parsed;
-        }
+      const stored = safeLocalStorageGet<ProjectWithRelations[]>(STORAGE_KEY) || safeLocalStorageGet<ProjectWithRelations[]>("lab_projects_store");
+      if (stored && Array.isArray(stored) && stored.length > 0) {
+        memoryProjects = stored;
       }
     } catch {
       // ignore
@@ -49,8 +54,11 @@ export function saveLocalProjects(projects: ProjectWithRelations[]): void {
   memoryProjects = projects;
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem("lab_projects_store", JSON.stringify(projects));
+      safeLocalStorageSet(STORAGE_KEY, projects);
+      safeLocalStorageSet("lab_projects_store", projects);
+      idbSet(STORAGE_KEY, projects).catch(() => {});
       window.dispatchEvent(new CustomEvent("lab_projects_updated", { detail: projects }));
+      window.dispatchEvent(new Event("storage"));
     } catch {
       // ignore
     }
@@ -84,6 +92,16 @@ export async function getPublishedProjects(
   filters: ProjectFilterParams = {},
   includeDrafts: boolean = false
 ): Promise<ProjectWithRelations[]> {
+  // If running in browser and we have stored projects in IndexedDB/localStorage, use them
+  if (typeof window !== "undefined") {
+    try {
+      const local = getLocalProjects();
+      if (local && Array.isArray(local) && local.length > 0) {
+        return filterLocalProjects(local, filters, includeDrafts);
+      }
+    } catch {}
+  }
+
   try {
     const supabase = getQueryClient();
     let query = supabase
