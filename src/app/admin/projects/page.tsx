@@ -41,7 +41,7 @@ import {
   Camera
 } from "lucide-react";
 import { ProjectWithRelations, ProjectStatus, ProjectFormData, ProjectResearchArea } from "@/lib/projects/types";
-import { getPublishedProjects, getResearchAreas } from "@/lib/projects/queries";
+import { getPublishedProjects, getResearchAreas, getLocalProjects, saveLocalProjects } from "@/lib/projects/queries";
 import {
   createProject,
   updateProject,
@@ -514,7 +514,7 @@ export default function AdminProjectsPage() {
     } catch (err) {
       console.warn("Delete fallback:", err);
       const existing = getLocalProjects();
-      saveLocalProjects(existing.filter((p) => p.id !== deleteConfirmId));
+      saveLocalProjects(existing.filter((p: ProjectWithRelations) => p.id !== deleteConfirmId));
       setStatusNotification({ type: "success", message: "Project deleted successfully." });
       setDeleteConfirmId(null);
       await loadData();
