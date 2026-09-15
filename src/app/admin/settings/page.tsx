@@ -1,20 +1,31 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useAdminTheme } from "@/lib/admin-theme";
+import {
+  exportAllLaboratoryData,
+  importAllLaboratoryData
+} from "@/lib/storage/idb-storage";
 import {
   Settings,
   Database,
   ShieldCheck,
   Save,
   CheckCircle2,
-  Building
+  Building,
+  Download,
+  Upload,
+  RefreshCw,
+  FileJson,
+  Sparkles
 } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const { theme } = useAdminTheme();
   const isLight = theme === "light";
   const [saved, setSaved] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [settings, setSettings] = useState({
     labName: "Laboratory of Environmental Health and Ecotoxicology (LabEHE)",
@@ -40,6 +51,49 @@ export default function AdminSettingsPage() {
     setTimeout(() => setSaved(false), 3000);
   };
 
+  const handleExportData = async () => {
+    try {
+      const bundle = await exportAllLaboratoryData();
+      const jsonStr = JSON.stringify(bundle, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `labehe_site_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setSyncStatus("Backup file downloaded successfully! You can upload this file to your live Vercel admin.");
+      setTimeout(() => setSyncStatus(null), 5000);
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Failed to export laboratory data.");
+    }
+  };
+
+  const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const success = await importAllLaboratoryData(parsed);
+      if (success) {
+        setSyncStatus("All data, images, and content successfully imported and synchronized!");
+        setTimeout(() => {
+          setSyncStatus(null);
+          window.location.reload();
+        }, 1500);
+      } else {
+        alert("Could not import the selected file. Please ensure it is a valid backup JSON file.");
+      }
+    } catch (err) {
+      console.error("Import error:", err);
+      alert("Failed to read or parse the backup file.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
@@ -49,7 +103,7 @@ export default function AdminSettingsPage() {
             <h1 className="text-xl font-bold tracking-tight font-[family-name:var(--font-manrope)]">Lab &amp; System Settings</h1>
           </div>
           <p className={`text-xs ${subText} mt-1`}>
-            Manage laboratory metadata, contact routing, and Supabase PostgreSQL credentials.
+            Manage laboratory metadata, contact routing, and 1-Click data synchronization between Localhost and Vercel.
           </p>
         </div>
 
@@ -69,8 +123,60 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
+      {syncStatus && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center gap-2.5 text-xs animate-in fade-in">
+          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{syncStatus}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {/* 1-Click Localhost & Vercel Sync Card */}
+          <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`}>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                <FileJson className="w-4 h-4 text-emerald-500" />
+                <span>1-Click Localhost &amp; Vercel Data Sync</span>
+              </h3>
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                Cross-Domain Sync
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Export all your uploaded images, custom team members, about page stories, and project items as a portable backup file, and import it directly into your live Vercel deployment with one click.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleExportData}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition cursor-pointer active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Site Data (.json)</span>
+              </button>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".json"
+                className="hidden"
+                onChange={handleImportData}
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#090D16] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer active:scale-95"
+              >
+                <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Import &amp; Sync Data (.json)</span>
+              </button>
+            </div>
+          </div>
+
           {/* General Information */}
           <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`}>
             <h3 className="text-sm font-bold flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">

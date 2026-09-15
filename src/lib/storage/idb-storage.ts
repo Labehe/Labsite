@@ -188,19 +188,57 @@ export function safeLocalStorageSet(key: string, value: any): boolean {
 }
 
 /**
- * Safe localStorage getter with fallback
+ * Export all local laboratory data (landing, about, team, gallery, projects, news, publications) as a backup JSON object
  */
-export function safeLocalStorageGet<T = any>(key: string): T | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return raw as unknown as T;
+export async function exportAllLaboratoryData(): Promise<Record<string, any>> {
+  const keys = [
+    "ecotox_landing_content_v2",
+    "ecotox_lab_gallery_items_v2",
+    "ecotox_lab_team_members_v2",
+    "ecotox_lab_news_v2",
+    "ecotox_lab_projects_v2",
+    "ecotox_lab_publications_v2",
+    "ecotox_lab_opportunities_v2",
+  ];
+  const bundle: Record<string, any> = {
+    exportedAt: new Date().toISOString(),
+    version: "2.0",
+    data: {},
+  };
+
+  for (const k of keys) {
+    let val = await idbGet(k);
+    if (!val) {
+      val = safeLocalStorageGet(k);
     }
-  } catch {
-    return null;
+    if (val) {
+      bundle.data[k] = val;
+    }
+  }
+  return bundle;
+}
+
+/**
+ * Import a backup bundle and write it to IndexedDB + localStorage and fire refresh events
+ */
+export async function importAllLaboratoryData(bundle: Record<string, any>): Promise<boolean> {
+  if (!bundle || !bundle.data || typeof bundle.data !== "object") return false;
+  try {
+    for (const [key, val] of Object.entries(bundle.data)) {
+      await idbSet(key, val);
+      safeLocalStorageSet(key, val);
+    }
+    // Dispatch all refresh events
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("landing-content-updated"));
+      window.dispatchEvent(new Event("gallery_items_updated"));
+      window.dispatchEvent(new Event("lab_team_updated"));
+      window.dispatchEvent(new Event("lab_news_updated"));
+      window.dispatchEvent(new Event("storage"));
+    }
+    return true;
+  } catch (err) {
+    console.error("Failed to import laboratory data:", err);
+    return false;
   }
 }
