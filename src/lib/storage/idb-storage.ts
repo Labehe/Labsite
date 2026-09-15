@@ -182,8 +182,26 @@ export function safeLocalStorageSet(key: string, value: any): boolean {
       return true;
     } catch (secondErr) {
       console.warn(`[Storage] localStorage still at capacity for "${key}". Value is safely preserved in IndexedDB.`, secondErr);
-      return false; // Safely handled, no uncaught exception
+      return false;
     }
+  }
+}
+
+/**
+ * Safe localStorage getter with fallback
+ */
+export function safeLocalStorageGet<T = any>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw as unknown as T;
+    }
+  } catch {
+    return null;
   }
 }
 
